@@ -132,7 +132,7 @@ export default {
         const formData = new FormData();
         formData.append('image', this.galleryForm.galleryImage);  // Изменено 'galleryImage' на 'image'
 
-        await axios.post('http://localhost:8080/api/gallery/upload', formData, {
+        await axios.post('/api/gallery/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
           }
@@ -149,7 +149,7 @@ export default {
 
     async fetchGalleryImages() {
       try {
-        const response = await fetch('http://localhost:8080/api/gallery');
+        const response = await fetch('/api/gallery');
         const data = await response.json();
           console.log("Fetched images:", data); 
           this.galleryImages = data; 
@@ -161,7 +161,7 @@ export default {
 
     async deleteImage(image) {
       try {
-        const response = await fetch('http://localhost:8080/api/delete-image', {
+        const response = await fetch('/api/delete-image', {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
@@ -194,7 +194,7 @@ export default {
 
     async fetchMessages() {
       try {
-        const response = await axios.get('http://localhost:8080/api/messages');
+        const response = await axios.get('/api/messages');
         this.messages = response.data;
       } catch (error) {
         console.error('Error fetching messages:', error);
@@ -204,7 +204,7 @@ export default {
 
     async deleteMessage(id) {
       try {
-        await axios.delete(`http://localhost:8080/api/messages/${id}`);
+        await axios.delete(`/api/messages/${id}`);
         await this.fetchMessages();
       } catch (error) {
         console.error('Error deleting message:', error);
@@ -219,7 +219,7 @@ export default {
 
     async fetchTours() {
       try {
-        const response = await axios.get('http://localhost:8080/api/tours');
+        const response = await axios.get('/api/tours');
         this.tours = response.data;
       } catch (error) {
         console.error('Error fetching tours:', error);
@@ -255,7 +255,7 @@ export default {
       if (!confirmed) return;
 
       // Отправляем DELETE запрос на бэкенд
-      await axios.delete(`http://localhost:8080/api/tours/${id}`, {
+      await axios.delete(`/api/tours/${id}`, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -282,49 +282,65 @@ export default {
       this.tourForm.days.splice(index, 1);
     },
 
-  async saveTour() {
-    try {
-      // Создаем объект FormData, чтобы отправить изображение вместе с другими данными
-      const formData = new FormData();
     
+    async saveTour() {
+  try {
+    // Создаем объект FormData для отправки данных формы
+    const formData = new FormData();
+
+    // Добавляем основные поля тура
     formData.append('name', this.tourForm.name);
     formData.append('description', this.tourForm.description);
     formData.append('duration', this.tourForm.duration);
     formData.append('price', this.tourForm.price);
-    
-    // Добавляем дни тура
-    this.tourForm.days.forEach((day, index) => {
-      formData.append(`days[${index}][dayNumber]`, index + 1);
-      formData.append(`days[${index}][details]`, day.details);
-    });
 
-    // Добавляем файл изображения
+    // Добавляем дни тура, проверяя на пустые данные
+    if (this.tourForm.days && this.tourForm.days.length > 0) {
+      this.tourForm.days.forEach((day, index) => {
+        if (day.details) { // Проверка, что день содержит описание
+          formData.append(`days[${index}][dayNumber]`, day.dayNumber || index + 1);
+          formData.append(`days[${index}][details]`, day.details);
+        }
+      });
+    }
+
+    // Если изображение загружено, добавляем его в formData
     if (this.tourForm.image) {
       formData.append('image', this.tourForm.image);
     }
 
-    // Отправляем POST или PUT запрос в зависимости от того, редактируется тур или создается новый
-    if (this.editingTour) {
-      await axios.put(`http://localhost:8080/api/tours/${this.tourForm.id}`, formData, {
+    // Проверяем, редактируем ли существующий тур или создаем новый
+    if (this.editingTour && this.tourForm.id) {
+      // Обновляем существующий тур через PUT запрос
+      await axios.put(`api/tours/${this.tourForm.id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
     } else {
-      await axios.post('http://localhost:8080/api/tours', formData, {
+      // Создаем новый тур через POST запрос
+      await axios.post('/api/tours', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
     }
 
-    // Обновляем список туров
+    // После успешного сохранения обновляем список туров
     await this.fetchTours();
-      this.cancelEditTour();
-    }catch (error) {
-      console.error('Error saving tour:', error);
-    }
-  },
+
+    // Сбрасываем форму после сохранения
+    this.cancelEditTour();
+
+  } catch (error) {
+    // Ловим и обрабатываем ошибки
+    console.error('Ошибка при сохранении тура:', error);
+    alert('Произошла ошибка при сохранении тура. Пожалуйста, проверьте данные и попробуйте снова.');
+  }
+},
+
+
+
 
   },
   

@@ -13,16 +13,14 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, 'tours'),
-      },
+server: {
+  proxy: {
+    '/api': {
+      target: 'http://localhost:8080/api',
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/api/, ''), // Это должно работать, если у вас правильный маршрут на бэкенде
     },
-    fs: {
-      strict: false,
-    },
-  }
+  },
+},
+  
 });

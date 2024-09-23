@@ -19,13 +19,14 @@ import (
 
 // Tour represents a tour in the database
 type Tour struct {
-	ID          int            `json:"id"`
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Duration    int            `json:"duration"`
-	Price       float64        `json:"price"`
-	Days        []Day          `json:"days"`      // Новое поле для дней тура
-	ImageURL    sql.NullString `json:"image_url"` // Используем sql.NullString
+	ID           int            `json:"id"`
+	Name         string         `json:"name"`
+	Description  string         `json:"description"`
+	Duration     int            `json:"duration"`
+	Price        float64        `json:"price"`
+	Days         []Day          `json:"days"`          // Новое поле для дней тура
+	ImageURL     sql.NullString `json:"image_url"`     // Используем sql.NullString
+	DisplayOrder int            `json:"display_order"` // Поле для сортировки туров
 
 }
 
@@ -54,34 +55,38 @@ func main() {
 	}
 	defer db.Close()
 
-	// Create routes using gorilla/mux
 	router := mux.NewRouter()
 
+	// Роуты для туров
 	router.HandleFunc("/api/tours", handleTours(db)).Methods("GET", "POST")
 	router.HandleFunc("/api/tours/{id}", handleTour(db)).Methods("GET", "PUT", "DELETE")
+
+	// Роуты для сообщений
 	router.HandleFunc("/api/messages", handleMessages(db)).Methods("POST", "GET")
 	router.HandleFunc("/api/messages/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		deleteMessage(db, w, r)
 	}).Methods("DELETE")
 
-	// Новый маршрут для загрузки изображений в галерею
+	// Роуты для галереи изображений
 	router.HandleFunc("/api/gallery/upload", func(w http.ResponseWriter, r *http.Request) {
 		uploadGalleryImage(w, r, db)
 	}).Methods("POST")
-
-	// Новый маршрут для получения списка изображений
 	router.HandleFunc("/api/gallery", getGalleryImages).Methods("GET")
 	router.HandleFunc("/api/delete-image", deleteImageHandler).Methods("DELETE")
 
-	// Настройка сервера для отдачи статических файлов
+	// Статические файлы
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 
-	// Apply CORS middleware
+	// Применение CORS middleware
 	corsEnabledMux := enableCors(router)
+
+	// Логирование текущей рабочей директории
 	log.Printf("Current working directory: %s", getCurrentDirectory())
-	// Start server
+
+	// Запуск сервера
 	log.Println("Starting server on :8080")
 	log.Fatal(http.ListenAndServe(":8080", corsEnabledMux))
+
 }
 
 // CORS middleware for allowing requests from other origins
@@ -126,7 +131,7 @@ func handleTour(db *sql.DB) http.HandlerFunc {
 		case http.MethodGet:
 			getTour(db, w, r, id)
 		case http.MethodPut:
-			updateTour(db, w, r, id)
+			updateTourHandler(db, w, r, id) // Передаем w, r и id
 		case http.MethodDelete:
 			deleteTour(db, w, r, id)
 		default:
@@ -136,7 +141,8 @@ func handleTour(db *sql.DB) http.HandlerFunc {
 }
 
 func getTours(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT id, name, description, duration, price, days, image_url FROM tours")
+	// Добавлено поле display_order в запрос
+	rows, err := db.Query("SELECT id, name, description, duration, price, days, image_url, display_order FROM tours ORDER BY display_order ASC")
 	if err != nil {
 		http.Error(w, "Ошибка выполнения запроса: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -148,11 +154,13 @@ func getTours(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		var tour Tour
 		var daysData []byte
 
-		if err := rows.Scan(&tour.ID, &tour.Name, &tour.Description, &tour.Duration, &tour.Price, &daysData, &tour.ImageURL); err != nil {
+		// Добавлено поле display_order в сканирование
+		if err := rows.Scan(&tour.ID, &tour.Name, &tour.Description, &tour.Duration, &tour.Price, &daysData, &tour.ImageURL, &tour.DisplayOrder); err != nil {
 			http.Error(w, "Ошибка чтения данных из базы: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
+		// Обработка поля Days
 		if len(daysData) == 0 {
 			tour.Days = []Day{}
 		} else {
@@ -163,10 +171,9 @@ func getTours(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Удаляем начальную точку из пути к изображению, если она присутствует
-		imagePath := strings.TrimPrefix(tour.ImageURL.String, ".")
-
-		// Формирование правильного URL для изображений
 		if tour.ImageURL.Valid {
+			imagePath := strings.TrimPrefix(tour.ImageURL.String, ".")
+			// Формирование правильного URL для изображений
 			tour.ImageURL.String = "http://" + r.Host + imagePath
 		}
 
@@ -178,6 +185,7 @@ func getTours(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Устанавливаем заголовок и кодируем ответ в JSON
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(tours); err != nil {
 		http.Error(w, "Ошибка кодирования ответа в JSON: "+err.Error(), http.StatusInternalServerError)
@@ -187,7 +195,11 @@ func getTours(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func createTourHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Ограничение размера запроса (например, до 10 МБ)
-		r.ParseMultipartForm(10 << 20)
+		err := r.ParseMultipartForm(10 << 20)
+		if err != nil {
+			http.Error(w, "Failed to parse form", http.StatusBadRequest)
+			return
+		}
 
 		// Получаем поля формы
 		name := r.FormValue("name")
@@ -217,9 +229,6 @@ func createTourHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Получаем данные о днях из формы
-		daysData := r.FormValue("days") // Предполагаем, что данные о днях передаются как JSON строка
-
 		// Начинаем транзакцию для атомарных операций
 		tx, err := db.Begin()
 		if err != nil {
@@ -240,28 +249,38 @@ func createTourHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Обрабатываем и вставляем дни
-		var days []struct {
-			DayNumber int    `json:"day_number"`
-			Details   string `json:"details"`
-		}
-		if err := json.Unmarshal([]byte(daysData), &days); err != nil {
-			tx.Rollback() // Откатываем транзакцию в случае ошибки
-			http.Error(w, "Invalid days data: "+err.Error(), http.StatusBadRequest)
-			return
-		}
+		// Обрабатываем дни тура, переданные как отдельные поля формы
+		i := 0
+		for {
+			// Получаем данные дня
+			dayNumber := r.FormValue(fmt.Sprintf("days[%d][dayNumber]", i))
+			details := r.FormValue(fmt.Sprintf("days[%d][details]", i))
 
-		for i, day := range days {
-			day.DayNumber = i + 1 // Начинаем нумерацию с 1
-			_, err := tx.Exec(
+			// Если день отсутствует, выходим из цикла
+			if dayNumber == "" || details == "" {
+				break
+			}
+
+			// Преобразуем день в число
+			dayNum, err := strconv.Atoi(dayNumber)
+			if err != nil {
+				tx.Rollback() // Откатываем транзакцию в случае ошибки
+				http.Error(w, "Invalid day number", http.StatusBadRequest)
+				return
+			}
+
+			// Вставляем день в базу данных
+			_, err = tx.Exec(
 				"INSERT INTO tour_days (tour_id, day_number, details) VALUES ($1, $2, $3)",
-				tourID, day.DayNumber, day.Details,
+				tourID, dayNum, details,
 			)
 			if err != nil {
 				tx.Rollback() // Откатываем транзакцию в случае ошибки
 				http.Error(w, "Error inserting day data: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
+
+			i++ // Переходим к следующему дню
 		}
 
 		// Коммитим транзакцию
@@ -306,76 +325,49 @@ func getTour(db *sql.DB, w http.ResponseWriter, r *http.Request, id string) {
 	json.NewEncoder(w).Encode(tour)
 }
 
-// Update a tour
-func updateTour(db *sql.DB, w http.ResponseWriter, r *http.Request, id string) {
-	r.ParseMultipartForm(10 << 20) // Ограничение размера на 10 МБ
+func updateTourHandler(db *sql.DB, w http.ResponseWriter, r *http.Request, tourID string) {
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		http.Error(w, "Failed to parse form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	name := r.FormValue("name")
 	description := r.FormValue("description")
 	duration, err := strconv.Atoi(r.FormValue("duration"))
 	if err != nil {
-		http.Error(w, "Invalid duration", http.StatusBadRequest)
+		http.Error(w, "Invalid duration: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	price, err := strconv.ParseFloat(r.FormValue("price"), 64)
 	if err != nil {
-		http.Error(w, "Invalid price", http.StatusBadRequest)
+		http.Error(w, "Invalid price: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Получаем информацию по дням тура в формате JSON
-	days := r.FormValue("days")
-	var tourDays []Day
-	err = json.Unmarshal([]byte(days), &tourDays)
+	tx, err := db.Begin()
 	if err != nil {
-		http.Error(w, "Invalid days format", http.StatusBadRequest)
+		http.Error(w, "Failed to begin transaction: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Проверяем, загрузил ли пользователь новое изображение
-	file, header, err := r.FormFile("image")
-	var imagePath string
-	if err == nil {
-		// Сохраняем новое изображение на диск
-		imagePath, err = saveImageTour(file, header, "./static/uploads")
-		if err != nil {
-			http.Error(w, "Failed to save image", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	// Обновляем тур с новым изображением
-	var query string
-	if imagePath != "" {
-		query = "UPDATE tours SET name=$1, description=$2, duration=$3, price=$4, image_url=$5 WHERE id=$6"
-		_, err = db.Exec(query, name, description, duration, price, imagePath, id)
-	} else {
-		query = "UPDATE tours SET name=$1, description=$2, duration=$3, price=$4 WHERE id=$5"
-		_, err = db.Exec(query, name, description, duration, price, id)
-	}
-
+	_, err = tx.Exec(
+		"UPDATE tours SET name = $1, description = $2, duration = $3, price = $4 WHERE id = $5",
+		name, description, duration, price, tourID,
+	)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		tx.Rollback()
+		http.Error(w, "Failed to update tour: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Удаляем существующие дни тура
-	_, err = db.Exec("DELETE FROM tour_days WHERE tour_id=$1", id)
-	if err != nil {
-		http.Error(w, "Failed to delete existing tour days", http.StatusInternalServerError)
+	if err := tx.Commit(); err != nil {
+		http.Error(w, "Failed to commit transaction: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Добавляем новые дни тура
-	for _, day := range tourDays {
-		_, err = db.Exec("INSERT INTO tour_days (tour_id, day_number, details) VALUES ($1, $2, $3)", id, day.DayNumber, day.Details)
-		if err != nil {
-			http.Error(w, "Failed to insert tour days", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "Tour updated successfully")
 }
 
 // Delete a tour

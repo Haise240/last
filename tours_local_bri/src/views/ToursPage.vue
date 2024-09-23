@@ -109,19 +109,10 @@ export default {
         });
       }
 
-      // Сортировка
-      if (this.sortOrder === 'price-asc') {
-        filteredTours.sort((a, b) => a.price - b.price);
-      } else if (this.sortOrder === 'price-desc') {
-        filteredTours.sort((a, b) => b.price - a.price);
-      } else if (this.sortOrder === 'duration-asc') {
-        filteredTours.sort((a, b) => a.duration - b.duration);
-      } else if (this.sortOrder === 'duration-desc') {
-        filteredTours.sort((a, b) => b.duration - a.duration);
-      }
-
+      // Теперь просто возвращаем отсортированный массив без дополнительной сортировки
       return filteredTours;
     }
+
   },
 
   methods: {

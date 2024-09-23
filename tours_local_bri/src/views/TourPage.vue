@@ -9,7 +9,7 @@
       <p class="tour-description">{{ tour.description }}</p>
 
       <div class="tour-info">
-        <p>Длительность: <span class="info-value">{{ tour.duration }} дней</span></p> 
+        <p>Длительность: <span class="info-value">{{ tour.duration }} дня</span></p> 
         <p class="tour-price">Цена: <span class="info-value">{{ tour.price }} руб.</span></p>
       </div>
 
