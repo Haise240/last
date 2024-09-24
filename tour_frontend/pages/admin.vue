@@ -83,220 +83,220 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRuntimeConfig } from '#app';
 import axios from 'axios';
 
-export default {
-  data() {
-    return {
-      tours: [],
-      messages: [],
-      galleryImages: [],  // Массив для хранения ссылок на изображения галереи
-      galleryVisible: true, // По умолчанию галерея видима
-      galleryForm: {
-        galleryImage: null  // Поле для загружаемого изображения
+const tours = ref([]);
+const messages = ref([]);
+const galleryImages = ref([]);  // Массив для хранения ссылок на изображения галереи
+const galleryVisible = ref(true); // По умолчанию галерея видима
+const galleryForm = ref({
+  galleryImage: null  // Поле для загружаемого изображения
+});
+const currentTourId = ref(null);
+const editingTour = ref(false);
+const selectedTourId = ref(null);
+const tourForm = ref({
+  id: null,
+  name: '',
+  description: '',
+  duration: null,
+  price: null,
+  days: [],
+  image: null
+});
+
+// Метод для переключения видимости галереи
+function toggleGallery() {
+  galleryVisible.value = !galleryVisible.value;
+}
+
+// Метод для загрузки файла в галерею
+function onGalleryImageChange(event) {
+  const file = event.target.files[0];
+  if (file) {
+    galleryForm.value.galleryImage = file;
+  }
+}
+
+// Метод для загрузки изображения в галерею
+async function uploadGalleryImage() {
+  try {
+    const formData = new FormData();
+    formData.append('image', galleryForm.value.galleryImage);  // Изменено 'galleryImage' на 'image'
+
+    await axios.post('/api/gallery/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    // После загрузки обновляем список изображений
+    await fetchGalleryImages();
+    alert('Изображение успешно загружено!');
+  } catch (error) {
+    console.error('Ошибка при загрузке изображения в галерею:', error);
+    alert('Ошибка при загрузке изображения.');
+  }
+}
+
+// Метод для получения изображений галереи
+async function fetchGalleryImages() {
+  try {
+    const response = await fetch('/api/gallery');
+    const data = await response.json();
+    console.log("Fetched images:", data);
+    galleryImages.value = data;
+  } catch (error) {
+    console.error('Ошибка при загрузке изображений:', error);
+  }
+}
+
+// Метод для удаления изображения
+async function deleteImage(image) {
+  try {
+    const config = useRuntimeConfig();
+
+    const response = await fetch(`${config.public.apiUrl}/api/delete-image`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      currentTourId: null,
-      editingTour: false,
-      selectedTourId: null,
-      tourForm: {
-        id: null,
-        name: '',
-        description: '',
-        duration: null,
-        price: null,
-        days: [],
-        image: null
+      body: JSON.stringify({ imagePath: image }) // Отправляем путь к изображению
+    });
+
+    if (response.ok) {
+      // Если запрос прошел успешно, обновляем список изображений
+      galleryImages.value = galleryImages.value.filter(img => img !== image);
+      console.log('Изображение удалено');
+    } else {
+      console.error('Ошибка при удалении изображения');
+    }
+  } catch (error) {
+    console.error('Ошибка при выполнении запроса на удаление:', error);
+  }
+}
+
+// Метод для загрузки файла тура
+function uploadFile(event) {
+  const file = event.target.files[0];
+  if (file) {
+    tourForm.value.image = file; // Сохраняем файл в tourForm.image
+  }
+}
+
+// Метод для получения сообщений
+async function fetchMessages() {
+  try {
+    const response = await axios.get('/api/messages');
+    messages.value = response.data;
+  } catch (error) {
+    console.error('Ошибка при получении сообщений:', error);
+  }
+}
+
+// Метод для удаления сообщения
+async function deleteMessage(id) {
+  try {
+    await axios.delete(`/api/messages/${id}`);
+    await fetchMessages();
+  } catch (error) {
+    console.error('Ошибка при удалении сообщения:', error);
+  }
+}
+
+// Метод для установки текущего тура
+function setCurrentTour(tourId) {
+  currentTourId.value = tourId;
+  selectedTourId.value = tourId;
+}
+
+// Метод для получения туров
+async function fetchTours() {
+  try {
+    const response = await axios.get('http://localhost:8080/api/tours');
+    tours.value = response.data;
+  } catch (error) {
+    console.error('Ошибка при получении туров:', error);
+  }
+}
+
+// Метод для сброса формы тура
+function resetTourForm() {
+  tourForm.value = {
+    id: null,
+    name: '',
+    description: '',
+    duration: null,
+    price: null,
+    days: [] // Сброс информации по дням
+  };
+}
+
+// Метод для редактирования тура
+function editTour(tour) {
+  editingTour.value = true;
+  tourForm.value = { ...tour, days: tour.days.map(day => ({ ...day, details: day.details || '' })) };
+  setCurrentTour(tour.id);
+}
+
+// Метод для отмены редактирования тура
+function cancelEditTour() {
+  editingTour.value = false;
+  resetTourForm();
+}
+
+// Метод для удаления тура
+async function deleteTour(id) {
+  try {
+    // Подтверждение перед удалением
+    const confirmed = confirm('Вы уверены, что хотите удалить этот тур?');
+    if (!confirmed) return;
+
+    // Отправляем DELETE запрос на бэкенд
+    await axios.delete(`/api/tours/${id}`, {
+      headers: {
+        'Content-Type': 'application/json'
       }
-    };
+    });
 
-  },
+    // После успешного удаления обновляем список туров
+    tours.value = tours.value.filter(tour => tour.id !== id);
+    console.log(`Тур с id ${id} был удален.`);
+  } catch (error) {
+    console.error('Ошибка при удалении тура:', error);
+    alert('Произошла ошибка при удалении тура. Попробуйте снова.');
+  }
+}
 
+// Добавление нового дня в тур
+function addDay() {
+  const newDayNumber = tourForm.value.days.length + 1;  // Новый день будет иметь порядковый номер, увеличенный на 1
+  tourForm.value.days.push({ dayNumber: newDayNumber, description: '' });
+}
 
+// Удаление дня из тура
+function removeDay(index) {
+  tourForm.value.days.splice(index, 1);
+}
 
-  methods: {
-
-    toggleGallery() {
-    this.galleryVisible = !this.galleryVisible;
-  },
-    // Метод для загрузки файла в галерею
-    onGalleryImageChange(event) {
-      const file = event.target.files[0];
-        if (file) {
-          this.galleryForm.galleryImage = file;
-          }
-    },
-
-    async uploadGalleryImage() {
-      try {
-        const formData = new FormData();
-        formData.append('image', this.galleryForm.galleryImage);  // Изменено 'galleryImage' на 'image'
-
-        await axios.post('/api/gallery/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-          }
-        });
-
-        // После загрузки обновляем список изображений
-        await this.fetchGalleryImages();
-          alert('Изображение успешно загружено!');
-        } catch (error) {
-          console.error('Error uploading gallery image:', error);
-          alert('Ошибка при загрузке изображения.');
-          }
-    },
-
-    async fetchGalleryImages() {
-      try {
-        const response = await fetch('/api/gallery');
-        const data = await response.json();
-          console.log("Fetched images:", data); 
-          this.galleryImages = data; 
-      } catch (error) {
-          console.error('Ошибка при загрузке изображений:', error);
-      }
-    },
-
-
-    async deleteImage(image) {
-      try {
-        const response = await fetch('/api/delete-image', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ imagePath: image }) // Отправляем путь к изображению
-        });
-        
-        if (response.ok) {
-          // Если запрос прошел успешно, обновляем список изображений
-          this.galleryImages = this.galleryImages.filter(img => img !== image);
-          console.log('Изображение удалено');
-        } else {
-          console.error('Ошибка при удалении изображения');
-        }
-      } catch (error) {
-          console.error('Ошибка при выполнении запроса на удаление:', error);
-      }
-    },
-
-
-
-
-    uploadFile(event) {
-      const file = event.target.files[0];
-      if (file) {
-      this.tourForm.image = file; // Сохраняем файл в tourForm.image
-      }
-    },
-
-
-    async fetchMessages() {
-      try {
-        const response = await axios.get('/api/messages');
-        this.messages = response.data;
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-      }
-    },
-
-
-    async deleteMessage(id) {
-      try {
-        await axios.delete(`/api/messages/${id}`);
-        await this.fetchMessages();
-      } catch (error) {
-        console.error('Error deleting message:', error);
-      }
-    },
-
-
-    setCurrentTour(tourId) {
-      this.currentTourId = tourId;
-      this.selectedTourId = tourId;
-    },
-
-    async fetchTours() {
-      try {
-        const response = await axios.get('/api/tours');
-        this.tours = response.data;
-      } catch (error) {
-        console.error('Error fetching tours:', error);
-      }
-    },
-
-    resetTourForm() {
-      this.tourForm = {
-        id: null,
-        name: '',
-        description: '',
-        duration: null,
-        price: null,
-        days: [] // Сброс информации по дням
-      };
-    },
-
-    editTour(tour) {
-      this.editingTour = true;
-      this.tourForm = { ...tour, days: tour.days.map(day => ({ ...day, details: day.details || '' })) };
-      this.setCurrentTour(tour.id);
-    },
-
-    cancelEditTour() {
-      this.editingTour = false;
-      this.resetTourForm();
-    },
-
-    async deleteTour(id) {
-      try {
-      // Подтверждение перед удалением
-      const confirmed = confirm('Вы уверены, что хотите удалить этот тур?');
-      if (!confirmed) return;
-
-      // Отправляем DELETE запрос на бэкенд
-      await axios.delete(`/api/tours/${id}`, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      // После успешного удаления обновляем список туров
-      this.tours = this.tours.filter(tour => tour.id !== id);
-      console.log(`Тур с id ${id} был удален.`);
-      } catch (error) {
-        console.error('Ошибка при удалении тура:', error);
-        alert('Произошла ошибка при удалении тура. Попробуйте снова.');
-        }
-    },
-
-
-    // Добавление нового дня в тур
-    addDay() {
-      const newDayNumber = this.tourForm.days.length + 1;  // Новый день будет иметь порядковый номер, увеличенный на 1
-      this.tourForm.days.push({ dayNumber: newDayNumber, description: '' });
-    },
-
-
-    // Удаление дня из тура
-    removeDay(index) {
-      this.tourForm.days.splice(index, 1);
-    },
-
-    
-    async saveTour() {
+// Метод для сохранения тура
+async function saveTour() {
   try {
     // Создаем объект FormData для отправки данных формы
     const formData = new FormData();
 
     // Добавляем основные поля тура
-    formData.append('name', this.tourForm.name);
-    formData.append('description', this.tourForm.description);
-    formData.append('duration', this.tourForm.duration);
-    formData.append('price', this.tourForm.price);
+    formData.append('name', tourForm.value.name);
+    formData.append('description', tourForm.value.description);
+    formData.append('duration', tourForm.value.duration);
+    formData.append('price', tourForm.value.price);
 
     // Добавляем дни тура, проверяя на пустые данные
-    if (this.tourForm.days && this.tourForm.days.length > 0) {
-      this.tourForm.days.forEach((day, index) => {
+    if (tourForm.value.days && tourForm.value.days.length > 0) {
+      tourForm.value.days.forEach((day, index) => {
         if (day.details) { // Проверка, что день содержит описание
           formData.append(`days[${index}][dayNumber]`, day.dayNumber || index + 1);
           formData.append(`days[${index}][details]`, day.details);
@@ -305,14 +305,14 @@ export default {
     }
 
     // Если изображение загружено, добавляем его в formData
-    if (this.tourForm.image) {
-      formData.append('image', this.tourForm.image);
+    if (tourForm.value.image) {
+      formData.append('image', tourForm.value.image);
     }
 
     // Проверяем, редактируем ли существующий тур или создаем новый
-    if (this.editingTour && this.tourForm.id) {
+    if (editingTour.value && tourForm.value.id) {
       // Обновляем существующий тур через PUT запрос
-      await axios.put(`api/tours/${this.tourForm.id}`, formData, {
+      await axios.put(`api/tours/${tourForm.value.id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -327,29 +327,24 @@ export default {
     }
 
     // После успешного сохранения обновляем список туров
-    await this.fetchTours();
+    await fetchTours();
 
     // Сбрасываем форму после сохранения
-    this.cancelEditTour();
+    cancelEditTour();
 
   } catch (error) {
     // Ловим и обрабатываем ошибки
     console.error('Ошибка при сохранении тура:', error);
     alert('Произошла ошибка при сохранении тура. Пожалуйста, проверьте данные и попробуйте снова.');
   }
-},
+}
 
-
-
-
-  },
-  
-  mounted() {
-    this.fetchTours();
-    this.fetchMessages();
-    this.fetchGalleryImages();
-  }
-};
+// Используем onMounted для выполнения кода при загрузке компонента
+onMounted(() => {
+  fetchTours();
+  fetchMessages();
+  fetchGalleryImages();
+});
 </script>
 
 

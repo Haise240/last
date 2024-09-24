@@ -44,6 +44,7 @@
 
 
 <script>
+import { NuxtLink } from 'vue-router';
 import axios from 'axios';
 import { Swiper, SwiperSlide } from 'swiper/vue';
 import 'swiper/swiper-bundle.css';

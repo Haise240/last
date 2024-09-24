@@ -12,7 +12,7 @@
           Присоединяйтесь к нам в незабываемом путешествии по живописным ландшафтам и богатой
           культуре Северной Осетии.
         </p>
-        <router-link to="/tours" class="btn cta-button">Выбрать тур</router-link>
+        <NuxtLink  to="/tours" class="btn cta-button">Выбрать тур</NuxtLink >
       </div>
     </section>
 
@@ -24,17 +24,17 @@
           <div class="tour-card">
             <h3>Путешествие в Сердце Кавказа</h3>
             <p>Испытайте азарт восхождения по потрясающим горам Северной Осетии.</p>
-            <router-link to="/tours/77" class="btn">Подробнее</router-link>
+            <NuxtLink  to="/tours/77" class="btn">Подробнее</NuxtLink >
           </div>
           <div class="tour-card">
             <h3>Горные Ущелья и Культурные Традиции</h3>
             <p>Откройте для себя богатую историю и традиции осетинского народа.</p>
-            <router-link to="/tours/79" class="btn">Подробнее</router-link>
+            <NuxtLink  to="/tours/79" class="btn">Подробнее</NuxtLink >
           </div>
           <div class="tour-card">
             <h3>Джип-Приключение по Горам Осетии</h3>
             <p>Откройте для себя захватывающее джип-приключение по горным маршрутам Северной Осетии! </p>
-            <router-link to="/tours/64" class="btn">Подробнее</router-link>
+            <NuxtLink  to="/tours/64" class="btn">Подробнее</NuxtLink >
           </div>
         </div>
       </div>
@@ -161,7 +161,7 @@ body {
 
 .hero {
   position: relative;
-  background-image: url('@/assets/HomePage/MainPageBack.jpg');
+  background-image: url('/public/HomePage/MainPageBack.jpg');
   background-size: cover;
   background-position: center;
   color: white;
@@ -327,7 +327,7 @@ body {
 
 .contact {
   position: relative; /* Для позиционирования псевдоэлемента */
-  background-image: url('@/assets/HomePage/MainPageBack.jpg');
+  background-image: url('/public/HomePage/MainPageBack.jpg');
   background-size: cover; /* Растягиваем изображение на весь контейнер */
   background-position: center; /* Центрируем изображение */
   color: white;
@@ -343,7 +343,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('@/assets/HomePage/MainPageBack.jpg');
+  background-image: url('/public/HomePage/MainPageBack.jpg');
   background-size: cover;
   background-position: center;
   filter: blur(8px); /* Размытие изображения */

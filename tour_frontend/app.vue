@@ -4,15 +4,15 @@
     <header class="desktop-nav">
       <nav>
         <div class="logo">
-          <router-link to="/">
+          <NuxtLink to="/">
             <h1>Explore Ossetia</h1>
-          </router-link>
+          </NuxtLink>
         </div>
         <ul class="nav-links">
-          <li><router-link to="/">Главная</router-link></li>
-          <li><router-link to="/tours">Туры</router-link></li>
-          <li><router-link to="/about">О нас</router-link></li>
-          <li><router-link to="/contacts">Контакты</router-link></li>
+          <li><NuxtLink to="/">Главная</NuxtLink></li>
+          <li><NuxtLink to="/tours">Туры</NuxtLink></li>
+          <li><NuxtLink to="/about">О нас</NuxtLink></li>
+          <li><NuxtLink to="/contacts">Контакты</NuxtLink></li>
         </ul>
       </nav>
     </header>
@@ -21,18 +21,18 @@
     <router-view />
 
     <div class="mobile-nav">
-  <router-link to="/">
+  <NuxtLink to="/">
     <font-awesome-icon :icon="['fas', 'home']" />
-  </router-link>
-  <router-link to="/tours">
+  </NuxtLink>
+  <NuxtLink to="/tours">
     <font-awesome-icon :icon="['fas', 'route']" />
-  </router-link>
-  <router-link to="/about">
+  </NuxtLink>
+  <NuxtLink to="/about">
     <font-awesome-icon :icon="['fas', 'info-circle']" />
-  </router-link>
-  <router-link to="/contacts">
+  </NuxtLink>
+  <NuxtLink to="/contacts">
     <font-awesome-icon :icon="['fas', 'phone']" />
-  </router-link>
+  </NuxtLink>
 </div>
 
 
@@ -40,7 +40,7 @@
     <footer>
       <div class="container">
         <ul class="footer-links">
-          <li><router-link to="/terms">Условия использования</router-link></li>
+          <li><NuxtLink to="/terms">Условия использования</NuxtLink></li>
           <li><a href="#">Социальные сети</a></li>
         </ul>
       </div>

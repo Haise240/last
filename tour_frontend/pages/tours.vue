@@ -58,7 +58,7 @@
               <span>Длительность: {{ tour.duration }} дней </span>
               <span class="price">Цена: {{ tour.price }} руб.</span>
             </p>
-            <router-link :to="`/tours/${tour.id}`" class="btn">Подробнее</router-link>
+            <NuxtLink-link :to="`/tours/${tour.id}`" class="btn">Подробнее</NuxtLink-link>
           </div>
         </div>
       </div>
