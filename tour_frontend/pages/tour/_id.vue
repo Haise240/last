@@ -4,8 +4,6 @@
       <h1 class="tour-title">{{ tour.name }}</h1>
     </header>
     <div class="tour-page">
-      <!-- Новый блок для заднего фона -->
-
       <p class="tour-description">{{ tour.description }}</p>
 
       <div class="tour-info">
@@ -15,7 +13,6 @@
 
       <div class="tour-gallery">
         <h2>Фотографии из туров</h2>
-        <!-- Swiper-слайдер для изображений -->
         <swiper
           :slides-per-view="3"
           :space-between="30"
@@ -40,12 +37,7 @@
   </div>
 </template>
 
-
-
-
 <script>
-import { NuxtLink } from 'vue-router';
-import axios from 'axios';
 import { Swiper, SwiperSlide } from 'swiper/vue';
 import 'swiper/swiper-bundle.css';
 
@@ -57,43 +49,38 @@ export default {
   data() {
     return {
       tour: {
-        name: '', 
+        name: '',
         description: '',
         duration: 0,
         price: 0,
-        days: [], // Массив для описания каждого дня        
+        days: [],
       },
-      galleryImages: [], // Здесь храним загруженные изображения из общей галереи
+      galleryImages: [],
+    };
+  },
+  async asyncData({ params }) {
+    const tourId = params.id; // Получаем ID тура из параметров маршрута
+    try {
+      const tourResponse = await fetch(`http://localhost:8080/api/tours/${tourId}`);
+      const tourData = await tourResponse.json();
+      const galleryResponse = await fetch('http://localhost:8080/api/gallery');
+      const galleryData = await galleryResponse.json();
+
+      return {
+        tour: tourData,
+        galleryImages: galleryData.map(image => `${image}`),
+      };
+    } catch (error) {
+      console.error('Ошибка при получении данных:', error);
+      return {
+        tour: {},
+        galleryImages: [],
+      };
     }
   },
-
-  methods: {
-    async fetchGalleryImages() {
-      try {
-        const response = await fetch('http://localhost:8080/api/gallery');
-        const data = await response.json();
-        this.galleryImages = data.map(image => `${image}`);
-      } catch (error) {
-        console.error('Ошибка при загрузке изображений:', error);
-      }
-    }
-  },
-
-
-  created() {
-    const tourId = this.$route.params.id; // Получаем ID тура из параметров маршрута
-    axios
-      .get(`http://localhost:8080/api/tours/${tourId}`)
-      .then((response) => {
-        this.tour = response.data;
-        this.fetchGalleryImages(); // Загружаем изображения галереи
-      })
-      .catch((error) => {
-        console.error('Ошибка при получении данных тура:', error);
-      });
-  },
-}
+};
 </script>
+
 
 
 <style scoped>

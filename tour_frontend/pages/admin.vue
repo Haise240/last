@@ -127,7 +127,7 @@ async function uploadGalleryImage() {
     const formData = new FormData();
     formData.append('image', galleryForm.value.galleryImage);  // Изменено 'galleryImage' на 'image'
 
-    await axios.post('/api/gallery/upload', formData, {
+    await axios.post(`http://localhost:8080/api/gallery/upload`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -145,7 +145,7 @@ async function uploadGalleryImage() {
 // Метод для получения изображений галереи
 async function fetchGalleryImages() {
   try {
-    const response = await fetch('/api/gallery');
+    const response = await fetch(`http://localhost:8080/api/gallery`);
     const data = await response.json();
     console.log("Fetched images:", data);
     galleryImages.value = data;
@@ -159,7 +159,7 @@ async function deleteImage(image) {
   try {
     const config = useRuntimeConfig();
 
-    const response = await fetch(`${config.public.apiUrl}/api/delete-image`, {
+    const response = await fetch(`http://localhost:8080/api/delete-image`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -190,7 +190,7 @@ function uploadFile(event) {
 // Метод для получения сообщений
 async function fetchMessages() {
   try {
-    const response = await axios.get('/api/messages');
+    const response = await axios.get(`http://localhost:8080/api/messages`);
     messages.value = response.data;
   } catch (error) {
     console.error('Ошибка при получении сообщений:', error);
@@ -200,7 +200,7 @@ async function fetchMessages() {
 // Метод для удаления сообщения
 async function deleteMessage(id) {
   try {
-    await axios.delete(`/api/messages/${id}`);
+    await axios.delete(`http://localhost:8080/api/messages/${id}`);
     await fetchMessages();
   } catch (error) {
     console.error('Ошибка при удалении сообщения:', error);
@@ -216,7 +216,7 @@ function setCurrentTour(tourId) {
 // Метод для получения туров
 async function fetchTours() {
   try {
-    const response = await axios.get('http://localhost:8080/api/tours');
+    const response = await axios.get(`http://localhost:8080/api/tours`);
     tours.value = response.data;
   } catch (error) {
     console.error('Ошибка при получении туров:', error);
@@ -256,7 +256,7 @@ async function deleteTour(id) {
     if (!confirmed) return;
 
     // Отправляем DELETE запрос на бэкенд
-    await axios.delete(`/api/tours/${id}`, {
+    await axios.delete(`http://localhost:8080/api/tours/${id}`, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -311,15 +311,14 @@ async function saveTour() {
 
     // Проверяем, редактируем ли существующий тур или создаем новый
     if (editingTour.value && tourForm.value.id) {
-      // Обновляем существующий тур через PUT запрос
-      await axios.put(`api/tours/${tourForm.value.id}`, formData, {
+      await axios.put(`http://localhost:8080/api/tours/${tourForm.value.id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
     } else {
       // Создаем новый тур через POST запрос
-      await axios.post('/api/tours', formData, {
+      await axios.post(`http://localhost:8080/api/tours`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

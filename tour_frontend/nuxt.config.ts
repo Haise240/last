@@ -4,5 +4,7 @@ export default defineNuxtConfig({
     public: {
       apiUrl: process.env.API_URL || 'http://localhost:8080/'
     }
-  }
+  },
+
+  compatibilityDate: '2024-09-26'
 })
