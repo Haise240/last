@@ -18,23 +18,22 @@
     </header>
 
     <!-- Точка монтирования для компонентов -->
-    <router-view />
+    <NuxtPage />
 
     <div class="mobile-nav">
-  <NuxtLink to="/">
-    <font-awesome-icon :icon="['fas', 'home']" />
-  </NuxtLink>
-  <NuxtLink to="/tours">
-    <font-awesome-icon :icon="['fas', 'route']" />
-  </NuxtLink>
-  <NuxtLink to="/about">
-    <font-awesome-icon :icon="['fas', 'info-circle']" />
-  </NuxtLink>
-  <NuxtLink to="/contacts">
-    <font-awesome-icon :icon="['fas', 'phone']" />
-  </NuxtLink>
-</div>
-
+      <NuxtLink to="/">
+        <font-awesome-icon :icon="['fas', 'home']" />
+      </NuxtLink>
+      <NuxtLink to="/tours">
+        <font-awesome-icon :icon="['fas', 'route']" />
+      </NuxtLink>
+      <NuxtLink to="/about">
+        <font-awesome-icon :icon="['fas', 'info-circle']" />
+      </NuxtLink>
+      <NuxtLink to="/contacts">
+        <font-awesome-icon :icon="['fas', 'phone']" />
+      </NuxtLink>
+    </div>
 
     <!-- Футер -->
     <footer>
@@ -232,7 +231,7 @@ section {
   }
 
   .mobile-nav {
-    height: 7%;
+    height: 60px; /* Задаём разумную высоту панели */
     z-index: 1;
     display: flex;
   }
