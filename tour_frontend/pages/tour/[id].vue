@@ -37,51 +37,20 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref } from 'vue'
 import { Swiper, SwiperSlide } from 'swiper/vue';
 import 'swiper/swiper-bundle.css';
+import { useFetch } from '#app';
 
-export default {
-  components: {
-    Swiper,
-    SwiperSlide,
-  },
-  data() {
-    return {
-      tour: {
-        name: '',
-        description: '',
-        duration: 0,
-        price: 0,
-        days: [],
-      },
-      galleryImages: [],
-    };
-  },
-  async asyncData({ params }) {
-    const tourId = params.id; // Получаем ID тура из параметров маршрута
-    try {
-      const tourResponse = await fetch(`http://localhost:8080/api/tours/${tourId}`);
-      const tourData = await tourResponse.json();
-      const galleryResponse = await fetch('http://localhost:8080/api/gallery');
-      const galleryData = await galleryResponse.json();
+// Получаем параметры маршрута (id тура)
+const route = useRoute();
+const tourId = route.params.id;
 
-      return {
-        tour: tourData,
-        galleryImages: galleryData.map(image => `${image}`),
-      };
-    } catch (error) {
-      console.error('Ошибка при получении данных:', error);
-      return {
-        tour: {},
-        galleryImages: [],
-      };
-    }
-  },
-};
+// Загружаем данные о туре и изображения галереи
+const { data: tour, error: tourError } = await useFetch(`http://localhost:8080/api/tours/${tourId}`);
+const { data: galleryImages, error: galleryError } = await useFetch('http://localhost:8080/api/gallery');
 </script>
-
-
 
 <style scoped>
 /* Стили для всей страницы */

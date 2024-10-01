@@ -64,7 +64,7 @@
       </div>
     </section>
 
-<!-- Contact Information -->
+
 <section class="contact-info">
   <div class="container">
     <div>Блок под Телеграм канал</div>
