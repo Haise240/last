@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div v-if="!loading && tour">
     <header class="page-header">
       <h1 class="tour-title">{{ tour.name }}</h1>
     </header>
@@ -35,22 +35,57 @@
       </div>
     </div>
   </div>
+  <div v-else>
+    <p v-if="loading">Загрузка данных...</p>
+    <p v-else-if="error">Ошибка загрузки данных: {{ error.message }}</p>
+  </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref } from 'vue';
 import { Swiper, SwiperSlide } from 'swiper/vue';
 import 'swiper/swiper-bundle.css';
-import { useFetch } from '#app';
+import { useRoute } from '#app';
 
-// Получаем параметры маршрута (id тура)
 const route = useRoute();
 const tourId = route.params.id;
 
-// Загружаем данные о туре и изображения галереи
-const { data: tour, error: tourError } = await useFetch(`http://localhost:8080/api/tours/${tourId}`);
-const { data: galleryImages, error: galleryError } = await useFetch('http://localhost:8080/api/gallery');
+// Состояния загрузки и ошибок
+const loading = ref(true);
+const error = ref(null);
+const tour = ref(null);
+const galleryImages = ref([]);
+
+async function fetchTourData() {
+  loading.value = true;
+  error.value = null;
+
+  try {
+    // Запрос на получение данных о туре
+    const { data: tourData } = await useFetch(`http://localhost:8080/api/tours/${tourId}`);
+    if (!tourData.value) {
+      throw new Error('Данные о туре не найдены');
+    }
+    tour.value = tourData.value;
+
+    // Запрос на получение галереи
+    const { data: galleryData } = await useFetch('http://localhost:8080/api/gallery');
+    if (galleryData.value) {
+      galleryImages.value = galleryData.value;
+    }
+  } catch (err) {
+    error.value = err;
+  } finally {
+    loading.value = false;
+  }
+}
+
+// Вызов функции для получения данных
+fetchTourData();
 </script>
+
+
+
 
 <style scoped>
 /* Стили для всей страницы */
