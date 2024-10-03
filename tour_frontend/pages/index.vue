@@ -24,17 +24,17 @@
           <div class="tour-card">
             <h3>Путешествие в Сердце Кавказа</h3>
             <p>Испытайте азарт восхождения по потрясающим горам Северной Осетии.</p>
-            <NuxtLink  to="/tours/77" class="btn">Подробнее</NuxtLink >
+            <NuxtLink  to="/tour/77" class="btn">Подробнее</NuxtLink >
           </div>
           <div class="tour-card">
             <h3>Горные Ущелья и Культурные Традиции</h3>
             <p>Откройте для себя богатую историю и традиции осетинского народа.</p>
-            <NuxtLink  to="/tours/79" class="btn">Подробнее</NuxtLink >
+            <NuxtLink  to="/tour/79" class="btn">Подробнее</NuxtLink >
           </div>
           <div class="tour-card">
             <h3>Джип-Приключение по Горам Осетии</h3>
             <p>Откройте для себя захватывающее джип-приключение по горным маршрутам Северной Осетии! </p>
-            <NuxtLink  to="/tours/64" class="btn">Подробнее</NuxtLink >
+            <NuxtLink  to="/tour/64" class="btn">Подробнее</NuxtLink >
           </div>
         </div>
       </div>
@@ -65,12 +65,16 @@
     </section>
 
 
-<section class="contact-info">
+    <section class="contact-info">
   <div class="container">
-    <div>Блок под Телеграм канал</div>
-    <p> фотографии </p>
+    <h2>Наш Телеграм канал</h2>
+    <p>Присоединяйтесь к нашему Телеграм-каналу, чтобы быть в курсе последних новостей и предложений!</p>
+    <a href="https://t.me/" class="btn telegram-button">Подписаться на канал</a>
   </div>
+
+  
 </section>
+
 
 
     <!-- Contact Section -->
@@ -394,6 +398,9 @@ form {
   border-radius: 8px; /* Скругленные углы */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Тень для формы */
 }
+
+
+
 
 /* Стиль для группы полей формы */
 .form-group {

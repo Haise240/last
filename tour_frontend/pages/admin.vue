@@ -41,29 +41,40 @@
 
 
 
-
-    <!-- Форма для добавления или редактирования тура -->
-    <div>
-      <h2>{{ editingTour ? 'Редактировать тур' : 'Добавить тур' }}</h2>
-      <form @submit.prevent="saveTour" class="admin-form" enctype="multipart/form-data">
-        <input v-model="tourForm.name" placeholder="Название тура" required class="form-input" />
-        <textarea v-model="tourForm.description" placeholder="Описание тура" class="form-input"></textarea>
-        <input type="number" v-model="tourForm.duration" placeholder="Длительность (дни)" class="form-input" />
-        <input type="number" v-model="tourForm.price" placeholder="Цена тура" step="0.01" required class="form-input" />
-        <input type="file" name="image" @change="uploadFile">
-        <div v-for="(day, index) in tourForm.days" :key="index" class="day-entry">
-          <h3>День {{ day.dayNumber }}</h3>
-          <textarea v-model="day.details" placeholder="Описание дня" class="form-input"></textarea>  <!-- Изменено на day.details -->
-          <button @click="removeDay(index)" type="button" class="btn btn-remove">Удалить день</button>
-        </div>
-
-
-        <button @click="addDay" type="button" class="btn btn-add-day">Добавить день</button>
-
-        <button type="submit" class="btn">{{ editingTour ? 'Обновить' : 'Добавить' }} тур</button>
-        <button v-if="editingTour" @click="cancelEditTour" class="btn btn-cancel">Отменить</button>
-      </form>
+<!-- Форма для добавления или редактирования тура -->
+<!-- Форма для редактирования тура -->
+<div>
+  <h2>{{ editingTour ? 'Редактировать тур' : 'Добавить тур' }}</h2>
+  <form @submit.prevent="saveTour" class="admin-form" enctype="multipart/form-data">
+    <input v-model="tourForm.name" placeholder="Название тура" required class="form-input" />
+    <textarea v-model="tourForm.description" placeholder="Описание тура" class="form-input"></textarea>
+    <input type="number" v-model="tourForm.duration" placeholder="Длительность (дни)" class="form-input" />
+    <input type="number" v-model="tourForm.price" placeholder="Цена тура" step="0.01" required class="form-input" />
+    
+    <!-- Отображение текущего изображения при редактировании тура -->
+    <div v-if="tourForm.imageUrl">
+      <h3>Текущее изображение:</h3>
+      <img :src="tourForm.imageUrl" alt="Текущая фотография тура" style="max-width: 300px;" />
     </div>
+
+    <!-- Поле для загрузки нового изображения тура -->  
+    <input type="file" name="image" @change="uploadFile" />
+
+    <!-- Отображение и редактирование дней тура -->
+    <div v-for="(day, index) in tourForm.days" :key="index" class="day-entry">
+      <h3>День {{ day.dayNumber }}</h3>
+      <textarea v-model="day.details" placeholder="Описание дня" class="form-input"></textarea>
+      <button @click="removeDay(index)" type="button" class="btn btn-remove">Удалить день</button>
+    </div>
+
+
+    <button @click="addDay" type="button" class="btn btn-add-day">Добавить день</button>
+
+    <button type="submit" class="btn">{{ editingTour ? 'Обновить' : 'Добавить' }} тур</button>
+    <button v-if="editingTour" @click="cancelEditTour" class="btn btn-cancel">Отменить</button>
+  </form>
+</div>
+
 
     <!-- Список существующих туров -->
     <div>
@@ -183,9 +194,17 @@ async function deleteImage(image) {
 function uploadFile(event) {
   const file = event.target.files[0];
   if (file) {
-    tourForm.value.image = file; // Сохраняем файл в tourForm.image
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      tourForm.value.imageUrl = e.target.result; // Обновляем предпросмотр изображения
+    };
+    reader.readAsDataURL(file);
+    
+    // Сохраняем файл в форме
+    tourForm.value.image = file;
   }
 }
+
 
 // Метод для получения сообщений
 async function fetchMessages() {
@@ -238,9 +257,23 @@ function resetTourForm() {
 // Метод для редактирования тура
 function editTour(tour) {
   editingTour.value = true;
-  tourForm.value = { ...tour, days: tour.days.map(day => ({ ...day, details: day.details || '' })) };
+
+  // Загружаем все данные о туре, включая дни и изображение
+  tourForm.value = { 
+    ...tour, 
+    days: tour.days.map((day, index) => ({
+      dayNumber: index + 1, // Используйте индекс для нумерации
+      details: day.details || '' 
+    })),
+    imageUrl: tour.imageUrl // Устанавливаем текущее изображение
+  };
+
   setCurrentTour(tour.id);
 }
+
+
+
+
 
 // Метод для отмены редактирования тура
 function cancelEditTour() {
@@ -273,19 +306,24 @@ async function deleteTour(id) {
 
 // Добавление нового дня в тур
 function addDay() {
-  const newDayNumber = tourForm.value.days.length + 1;  // Новый день будет иметь порядковый номер, увеличенный на 1
-  tourForm.value.days.push({ dayNumber: newDayNumber, description: '' });
+  const newDayNumber = tourForm.value.days.length + 1;  // Новый день будет иметь порядковый номер
+  tourForm.value.days.push({ dayNumber: newDayNumber, details: '' });
 }
 
 // Удаление дня из тура
 function removeDay(index) {
   tourForm.value.days.splice(index, 1);
+  
+  // Обновляем номера дней после удаления
+  tourForm.value.days.forEach((day, i) => {
+    day.dayNumber = i + 1; // Перенумеровываем дни
+  });
 }
+
 
 // Метод для сохранения тура
 async function saveTour() {
   try {
-    // Создаем объект FormData для отправки данных формы
     const formData = new FormData();
 
     // Добавляем основные поля тура
@@ -296,10 +334,9 @@ async function saveTour() {
 
     // Добавляем дни тура, проверяя на пустые данные
     if (tourForm.value.days && tourForm.value.days.length > 0) {
-      tourForm.value.days.forEach((day, index) => {
+      tourForm.value.days.forEach((day) => {
         if (day.details) { // Проверка, что день содержит описание
-          formData.append(`days[${index}][dayNumber]`, day.dayNumber || index + 1);
-          formData.append(`days[${index}][details]`, day.details);
+          formData.append('days[]', JSON.stringify(day)); // Отправляем объект дня
         }
       });
     }
@@ -327,16 +364,15 @@ async function saveTour() {
 
     // После успешного сохранения обновляем список туров
     await fetchTours();
-
-    // Сбрасываем форму после сохранения
     cancelEditTour();
 
   } catch (error) {
-    // Ловим и обрабатываем ошибки
     console.error('Ошибка при сохранении тура:', error);
     alert('Произошла ошибка при сохранении тура. Пожалуйста, проверьте данные и попробуйте снова.');
   }
 }
+
+
 
 // Используем onMounted для выполнения кода при загрузке компонента
 onMounted(() => {
