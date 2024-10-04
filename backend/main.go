@@ -579,7 +579,7 @@ func uploadGalleryImage(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "Image uploaded successfully")
+	fmt.Fprintln(w, "Изображение загружено успешно")
 }
 
 // Обработчик для получения списка изображений галереи
@@ -601,7 +601,7 @@ func getGalleryImages(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(imageURLs)
-	println("все отдал!")
+	println("Галерея отдана!")
 }
 
 // deleteImageHandler обрабатывает запросы на удаление изображений
