@@ -13,28 +13,29 @@ import (
 	"strconv"
 	"strings"
 
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 )
 
-// Tour represents a tour in the database
 type Tour struct {
-	ID           int            `json:"id"`
-	Name         string         `json:"name"`
-	Description  string         `json:"description"`
-	Duration     int            `json:"duration"`
+	ID           uint
+	Name         string
+	Description  string
+	Duration     int
 	Price        float64        `json:"price"`
-	Days         []Day          `json:"days"`          // Новое поле для дней тура
-	ImageURL     sql.NullString `json:"image_url"`     // Используем sql.NullString
-	DisplayOrder int            `json:"display_order"` // Поле для сортировки туров
-
+	Days         []Day          `gorm:"foreignKey:TourID"`
+	ImageURL     sql.NullString `json:"image_url"`
+	DisplayOrder int
 }
 
 type Day struct {
-	DayNumber int    `json:"dayNumber"`
-	Details   string `json:"details"`
 	ID        int    `json:"id"`
-	details   string `json:"text"`
+	TourID    int    `json:"tour_id"`
+	DayNumber int    `json:"day_number"`
+	Details   string `json:"details"`
 }
 
 // Message represents a message from the contact form
@@ -46,14 +47,18 @@ type Message struct {
 	Phone   string `json:"phone"`
 }
 
+type Image struct {
+	ID       uint   `gorm:"primaryKey"`                 // ID изображения
+	Filepath string `gorm:"type:varchar(255);not null"` // Путь к файлу изображения
+}
+
 func main() {
-	// Connect to the database
+	// Подключение к базе данных с использованием GORM
 	connStr := "user=postgres dbname=mydb sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
+	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
 
 	router := mux.NewRouter()
 
@@ -86,7 +91,6 @@ func main() {
 	// Запуск сервера
 	log.Println("Starting server on :8080")
 	log.Fatal(http.ListenAndServe(":8080", corsEnabledMux))
-
 }
 
 // CORS middleware for allowing requests from other origins
@@ -106,15 +110,15 @@ func enableCors(next http.Handler) http.Handler {
 	})
 }
 
-//ТУРЫ
+// ТУРЫ
 
-func handleTours(db *sql.DB) http.HandlerFunc {
+func handleTours(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			getTours(db, w, r)
 		case http.MethodPost:
-			createTourHandler(db)(w, r) // Передаем db в createTourHandler
+			createTourHandler(db)(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -122,7 +126,7 @@ func handleTours(db *sql.DB) http.HandlerFunc {
 }
 
 // handleTour handles GET, PUT, and DELETE requests for a single tour
-func handleTour(db *sql.DB) http.HandlerFunc {
+func handleTour(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		id := vars["id"]
@@ -140,49 +144,36 @@ func handleTour(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func getTours(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Добавлено поле display_order в запрос
-	rows, err := db.Query("SELECT id, name, description, duration, price, days, image_url, display_order FROM tours ORDER BY display_order ASC")
-	if err != nil {
+func getTours(db *gorm.DB, w http.ResponseWriter, r *http.Request) {
+	// Определяем переменную для хранения результатов
+	var tours []Tour
+
+	// Выполняем запрос с помощью Raw
+	if err := db.Raw("SELECT id, name, description, duration, price, days, image_url, display_order FROM tours ORDER BY display_order ASC").Scan(&tours).Error; err != nil {
 		http.Error(w, "Ошибка выполнения запроса: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
 
-	tours := []Tour{}
-	for rows.Next() {
-		var tour Tour
+	// Обрабатываем поле Days и формируем правильные URL для изображений
+	for i := range tours {
 		var daysData []byte
 
-		// Добавлено поле display_order в сканирование
-		if err := rows.Scan(&tour.ID, &tour.Name, &tour.Description, &tour.Duration, &tour.Price, &daysData, &tour.ImageURL, &tour.DisplayOrder); err != nil {
-			http.Error(w, "Ошибка чтения данных из базы: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
 		// Обработка поля Days
-		if len(daysData) == 0 {
-			tour.Days = []Day{}
+		if len(tours[i].Days) == 0 {
+			tours[i].Days = []Day{}
 		} else {
-			if err := json.Unmarshal(daysData, &tour.Days); err != nil {
+			if err := json.Unmarshal(daysData, &tours[i].Days); err != nil {
 				http.Error(w, "Ошибка декодирования данных: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}
 
 		// Удаляем начальную точку из пути к изображению, если она присутствует
-		if tour.ImageURL.Valid {
-			imagePath := strings.TrimPrefix(tour.ImageURL.String, ".")
+		if tours[i].ImageURL.Valid {
+			imagePath := strings.TrimPrefix(tours[i].ImageURL.String, ".")
 			// Формирование правильного URL для изображений
-			tour.ImageURL.String = "http://" + r.Host + imagePath
+			tours[i].ImageURL.String = "http://" + r.Host + imagePath
 		}
-
-		tours = append(tours, tour)
-	}
-
-	if err = rows.Err(); err != nil {
-		http.Error(w, "Ошибка при итерации по строкам: "+err.Error(), http.StatusInternalServerError)
-		return
 	}
 
 	// Устанавливаем заголовок и кодируем ответ в JSON
@@ -192,7 +183,7 @@ func getTours(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createTourHandler(db *sql.DB) http.HandlerFunc {
+func createTourHandler(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Ограничение размера запроса (например, до 10 МБ)
 		err := r.ParseMultipartForm(10 << 20)
@@ -221,6 +212,7 @@ func createTourHandler(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "Image upload failed", http.StatusBadRequest)
 			return
 		}
+		defer file.Close()
 
 		// Сохраняем изображение на диск
 		imagePath, err := saveImageTour(file, header, "./static/uploads")
@@ -230,20 +222,27 @@ func createTourHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		// Начинаем транзакцию для атомарных операций
-		tx, err := db.Begin()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		tx := db.Begin()
+
+		// Проверка на наличие ошибок при начале транзакции
+		if tx.Error != nil {
+			http.Error(w, tx.Error.Error(), http.StatusInternalServerError)
 			return
+		}
+		imageURL := sql.NullString{
+			String: imagePath,
+			Valid:  imagePath != "",
 		}
 
 		// Вставляем основной тур с изображением
-		var tourID int
-		err = tx.QueryRow(
-			"INSERT INTO tours (name, description, duration, price, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-			name, description, duration, price, imagePath,
-		).Scan(&tourID)
-
-		if err != nil {
+		tour := Tour{
+			Name:        name,
+			Description: description,
+			Duration:    duration,
+			Price:       price,
+			ImageURL:    imageURL, // Здесь мы используем imagePath
+		}
+		if err := tx.Create(&tour).Error; err != nil { // Используем Create для вставки
 			tx.Rollback() // Откатываем транзакцию в случае ошибки
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -270,11 +269,10 @@ func createTourHandler(db *sql.DB) http.HandlerFunc {
 			}
 
 			// Вставляем день в базу данных
-			_, err = tx.Exec(
-				"INSERT INTO tour_days (tour_id, day_number, details) VALUES ($1, $2, $3)",
-				tourID, dayNum, details,
-			)
-			if err != nil {
+			if err = tx.Exec(
+				"INSERT INTO tour_days (tour_id, day_number, details) VALUES (?, ?, ?)",
+				tour.ID, dayNum, details,
+			).Error; err != nil {
 				tx.Rollback() // Откатываем транзакцию в случае ошибки
 				http.Error(w, "Error inserting day data: "+err.Error(), http.StatusInternalServerError)
 				return
@@ -284,7 +282,7 @@ func createTourHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		// Коммитим транзакцию
-		if err := tx.Commit(); err != nil {
+		if err := tx.Commit().Error; err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -294,75 +292,83 @@ func createTourHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func getTour(db *sql.DB, w http.ResponseWriter, r *http.Request, id string) {
+func getTour(db *gorm.DB, w http.ResponseWriter, r *http.Request, id string) {
 	var tour Tour
-	row := db.QueryRow("SELECT id, name, description, duration, price FROM tours WHERE id=$1", id)
-	if err := row.Scan(&tour.ID, &tour.Name, &tour.Description, &tour.Duration, &tour.Price); err != nil {
+
+	// Получаем основной тур по ID
+	if err := db.First(&tour, id).Error; err != nil {
 		http.Error(w, "Tour not found", http.StatusNotFound)
 		return
 	}
 
 	// Извлекаем дни тура
-	rows, err := db.Query("SELECT day_number, details FROM tour_days WHERE tour_id = $1 ORDER BY day_number", id)
-	if err != nil {
+	var days []Day
+	if err := db.Table("tour_days").Where("tour_id = ?", tour.ID).Order("day_number").Find(&days).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-	defer rows.Close()
-
-	var days []Day
-	for rows.Next() {
-		var day Day
-		if err := rows.Scan(&day.DayNumber, &day.Details); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		days = append(days, day)
 	}
 	tour.Days = days
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tour)
+	if err := json.NewEncoder(w).Encode(tour); err != nil {
+		http.Error(w, "Ошибка кодирования ответа в JSON: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
-func updateTourHandler(db *sql.DB, w http.ResponseWriter, r *http.Request, tourID string) {
-	err := r.ParseMultipartForm(10 << 20)
+func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id string) {
+	// Конвертируем ID тура в целое число
+	tourID, err := strconv.Atoi(id)
 	if err != nil {
-		http.Error(w, "Failed to parse form: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Invalid tour ID", http.StatusBadRequest)
 		return
 	}
 
-	name := r.FormValue("name")
-	description := r.FormValue("description")
-	duration, err := strconv.Atoi(r.FormValue("duration"))
-	if err != nil {
-		http.Error(w, "Invalid duration: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	price, err := strconv.ParseFloat(r.FormValue("price"), 64)
-	if err != nil {
-		http.Error(w, "Invalid price: "+err.Error(), http.StatusBadRequest)
+	// Обрабатываем запрос
+	var tour Tour
+	if err := json.NewDecoder(r.Body).Decode(&tour); err != nil {
+		http.Error(w, "Failed to decode request body", http.StatusBadRequest)
 		return
 	}
 
-	tx, err := db.Begin()
-	if err != nil {
-		http.Error(w, "Failed to begin transaction: "+err.Error(), http.StatusInternalServerError)
+	// Начинаем транзакцию
+	tx := db.Begin()
+	if err := tx.Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_, err = tx.Exec(
-		"UPDATE tours SET name = $1, description = $2, duration = $3, price = $4 WHERE id = $5",
-		name, description, duration, price, tourID,
-	)
-	if err != nil {
+	// Обновляем данные о туре
+	if err := tx.Model(&Tour{}).Where("id = ?", tourID).Updates(Tour{
+		Name:        tour.Name,
+		Description: tour.Description,
+		Duration:    tour.Duration,
+		Price:       tour.Price,
+		ImageURL:    tour.ImageURL,
+	}).Error; err != nil {
 		tx.Rollback()
-		http.Error(w, "Failed to update tour: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if err := tx.Commit(); err != nil {
-		http.Error(w, "Failed to commit transaction: "+err.Error(), http.StatusInternalServerError)
+	// Обновляем дни тура
+	if err := tx.Where("tour_id = ?", tourID).Delete(&Day{}).Error; err != nil {
+		tx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Вставляем обновленные дни
+	for _, day := range tour.Days {
+		if err := tx.Create(&day).Error; err != nil {
+			tx.Rollback()
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Коммитим транзакцию
+	if err := tx.Commit().Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -370,116 +376,107 @@ func updateTourHandler(db *sql.DB, w http.ResponseWriter, r *http.Request, tourI
 	fmt.Fprintln(w, "Tour updated successfully")
 }
 
-// Delete a tour
-func deleteTour(db *sql.DB, w http.ResponseWriter, r *http.Request, id string) {
-	// Выполняем запрос на удаление тура
-	result, err := db.Exec("DELETE FROM tours WHERE id=$1", id)
+func deleteTour(db *gorm.DB, w http.ResponseWriter, r *http.Request, id string) {
+	// Конвертируем ID тура в целое число
+	tourID, err := strconv.Atoi(id)
 	if err != nil {
-		http.Error(w, "Ошибка при удалении тура: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Invalid tour ID", http.StatusBadRequest)
 		return
 	}
 
-	// Проверяем, был ли удалён тур
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		http.Error(w, "Ошибка при проверке результата удаления: "+err.Error(), http.StatusInternalServerError)
+	// Удаляем тур из базы данных
+	if err := db.Delete(&Tour{}, tourID).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if rowsAffected == 0 {
-		http.Error(w, "Тур с таким ID не найден", http.StatusNotFound)
-		return
-	}
-
-	// Отправляем успешный ответ, если удаление прошло успешно
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent) // 204 No Content
 }
 
-func saveImageTour(file multipart.File, header *multipart.FileHeader, uploadPath string) (string, error) {
-	defer file.Close()
+// Функция для сохранения изображения на диск
+// Функция для сохранения изображения тура
+func saveImageTour(file multipart.File, header *multipart.FileHeader, uploadDir string) (string, error) {
+	// Создаем директорию, если она не существует
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		return "", fmt.Errorf("failed to create directory: %v", err)
+	}
 
-	// Создаем путь для файла
-	filePath := fmt.Sprintf("%s/%s", uploadPath, header.Filename)
+	// Формируем путь для сохранения изображения
+	imagePath := filepath.Join(uploadDir, header.Filename)
 
-	// Открываем файл для записи
-	out, err := os.Create(filePath)
+	// Создаем файл
+	out, err := os.Create(imagePath)
 	if err != nil {
-		log.Printf("Error creating file: %s\n", err)
-		return "", err
+		return "", fmt.Errorf("failed to create file: %v", err)
 	}
 	defer out.Close()
 
-	// Копируем файл
-	_, err = io.Copy(out, file)
-	if err != nil {
-		log.Printf("Error copying file: %s\n", err)
-		return "", err
+	// Копируем содержимое загруженного файла в созданный файл
+	if _, err := io.Copy(out, file); err != nil {
+		return "", fmt.Errorf("failed to save file: %v", err)
 	}
 
-	log.Printf("File saved successfully: %s\n", filePath)
-	return filePath, nil
+	// Возвращаем относительный путь к изображению
+	return imagePath, nil
 }
 
 //СООБЩЕНИЯ
 
-// handleMessages handles POST, GET, and DELETE requests for messages
-func handleMessages(db *sql.DB) http.HandlerFunc {
+func handleMessages(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
-			postMessage(db, w, r)
+			postMessage(db, w, r) // Используем GORM
 		case http.MethodGet:
-			getMessages(db, w, r)
+			getMessages(db, w, r) // Используем GORM
 		case http.MethodDelete:
-			deleteMessage(db, w, r)
+			deleteMessage(db, w, r) // Используем GORM
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	}
 }
 
-// Пример запроса на получение всех сообщений
-func getMessages(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT id, name, email, message, phone FROM messages")
-	if err != nil {
+// Пример запроса на получение всех сообщений с использованием GORM
+func getMessages(db *gorm.DB, w http.ResponseWriter, r *http.Request) {
+	var messages []Message
+
+	// Используем метод GORM для выполнения SQL-запроса
+	if err := db.Find(&messages).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
-
-	messages := []Message{}
-	for rows.Next() {
-		var msg Message
-		if err := rows.Scan(&msg.ID, &msg.Name, &msg.Email, &msg.Message, &msg.Phone); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		messages = append(messages, msg)
-	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(messages)
+	if err := json.NewEncoder(w).Encode(messages); err != nil {
+		http.Error(w, "Ошибка кодирования в JSON: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
-// Post a message
-func postMessage(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+func postMessage(db *gorm.DB, w http.ResponseWriter, r *http.Request) {
 	var msg Message
+
+	// Декодируем тело запроса в структуру Message
 	if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
 		log.Println("Error decoding message:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	log.Printf("Received message: %+v\n", msg)
-	_, err := db.Exec("INSERT INTO messages (name, email, message, phone) VALUES ($1, $2, $3, $4)", msg.Name, msg.Email, msg.Message, msg.Phone)
-	if err != nil {
+
+	// Вставляем сообщение в базу данных с помощью GORM
+	if err := db.Create(&msg).Error; err != nil {
 		log.Println("Error inserting message:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Возвращаем успешный ответ
 	w.WriteHeader(http.StatusOK)
 }
 
-func deleteMessage(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+func deleteMessage(db *gorm.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
 
@@ -496,8 +493,7 @@ func deleteMessage(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Удаляем сообщение из базы данных
-	_, err = db.Exec("DELETE FROM messages WHERE id = $1", id)
-	if err != nil {
+	if err := db.Delete(&Message{}, id).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -544,7 +540,7 @@ func saveImageGallery(file multipart.File, header *multipart.FileHeader) (string
 	return filePath, nil
 }
 
-func uploadGalleryImage(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func uploadGalleryImage(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	// Ограничиваем размер запроса (например, до 10 МБ)
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
@@ -570,9 +566,13 @@ func uploadGalleryImage(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	// Записываем путь изображения в таблицу images
-	_, err = db.Exec("INSERT INTO images (filepath) VALUES ($1)", imagePath)
-	if err != nil {
+	// Создаем запись изображения для таблицы images
+	imageRecord := Image{
+		Filepath: imagePath,
+	}
+
+	// Вставляем запись в базу данных с использованием метода Create
+	if err := db.Create(&imageRecord).Error; err != nil {
 		log.Printf("Error inserting image record into database: %s\n", err)
 		http.Error(w, "Failed to save image record in database", http.StatusInternalServerError)
 		return

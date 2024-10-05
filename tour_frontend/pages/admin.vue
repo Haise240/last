@@ -42,7 +42,6 @@
 
 
 <!-- Форма для добавления или редактирования тура -->
-<!-- Форма для редактирования тура -->
 <div>
   <h2>{{ editingTour ? 'Редактировать тур' : 'Добавить тур' }}</h2>
   <form @submit.prevent="saveTour" class="admin-form" enctype="multipart/form-data">
@@ -56,9 +55,8 @@
       <h3>Текущее изображение:</h3>
       <img :src="tourForm.imageUrl" alt="Текущая фотография тура" style="max-width: 300px;" />
     </div>
-
-    <!-- Поле для загрузки нового изображения тура -->  
     <input type="file" name="image" @change="uploadFile" />
+
 
     <!-- Отображение и редактирование дней тура -->
     <div v-for="(day, index) in tourForm.days" :key="index" class="day-entry">
@@ -199,11 +197,12 @@ function uploadFile(event) {
       tourForm.value.imageUrl = e.target.result; // Обновляем предпросмотр изображения
     };
     reader.readAsDataURL(file);
-    
-    // Сохраняем файл в форме
+
+    // Сохраняем файл в форме для отправки на сервер
     tourForm.value.image = file;
   }
 }
+
 
 
 // Метод для получения сообщений
@@ -332,21 +331,17 @@ async function saveTour() {
     formData.append('duration', tourForm.value.duration);
     formData.append('price', tourForm.value.price);
 
-    // Добавляем дни тура, проверяя на пустые данные
+    // Добавляем дни тура
     if (tourForm.value.days && tourForm.value.days.length > 0) {
-      tourForm.value.days.forEach((day) => {
-        if (day.details) { // Проверка, что день содержит описание
-          formData.append('days[]', JSON.stringify(day)); // Отправляем объект дня
-        }
-      });
+      formData.append('days', JSON.stringify(tourForm.value.days));
     }
 
-    // Если изображение загружено, добавляем его в formData
+    // Если изображение загружено, добавляем его
     if (tourForm.value.image) {
       formData.append('image', tourForm.value.image);
     }
 
-    // Проверяем, редактируем ли существующий тур или создаем новый
+    // Если редактируем тур
     if (editingTour.value && tourForm.value.id) {
       await axios.put(`http://localhost:8080/api/tours/${tourForm.value.id}`, formData, {
         headers: {
@@ -365,12 +360,14 @@ async function saveTour() {
     // После успешного сохранения обновляем список туров
     await fetchTours();
     cancelEditTour();
-
+    alert('Тур успешно сохранен!');
+    
   } catch (error) {
     console.error('Ошибка при сохранении тура:', error);
     alert('Произошла ошибка при сохранении тура. Пожалуйста, проверьте данные и попробуйте снова.');
   }
 }
+
 
 
 

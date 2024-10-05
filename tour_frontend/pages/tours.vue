@@ -1,3 +1,4 @@
+
 <template>
   <div>
     <!-- Header Section -->
@@ -52,15 +53,13 @@
         <div v-else-if="filteredAndSortedTours.length === 0">Нет доступных туров по выбранным фильтрам.</div>
         <div v-else class="tour-cards">
           <div v-for="tour in filteredAndSortedTours" :key="tour.id" class="tour-card">
-            <img :src="formatImageUrl(tour.imageURL)" :alt="tour.name" />
+            <img :src="formatImageUrl(tour.image_url)" :alt="tour.name" />
             <h1 class="tour-title">{{ tour.name }}</h1>
             <p class="tour-info">
               <span>Длительность: {{ tour.duration }} дней </span>
               <span class="price">Цена: {{ tour.price }} руб.</span>
             </p>
             <nuxt-link :to="`/tour/${tour.id}`" class="btn">Подробнее</nuxt-link>
-
-
           </div>
         </div>
       </div>
@@ -119,42 +118,27 @@ export default {
 
   methods: {
     fetchTours() {
-  axios
-    .get('http://localhost:8080/api/tours')
-    .then((response) => {
-      console.log('Fetched Tours:', response.data); // Выводим полученные данные
-      // Преобразуем объекты imageURL в строки
-      this.tours = response.data.map(tour => ({
-        ...tour,
-        imageURL: tour.image_url.String || '1.jpg'
-      }));
-      this.loading = false;
-    })
-    .catch((error) => {
-      console.error('Ошибка при получении туров:', error);
-      this.loading = false;
-    });
-},
-formatImageUrl(imageURL) {
-    // Извлекаем строку из объекта, если imageURL - объект
-    let url = '';
-    if (imageURL && typeof imageURL === 'object') {
-      url = imageURL.String;
-    } else {
-      url = imageURL;
-    }
+      axios
+        .get('http://localhost:8080/api/tours')
+        .then((response) => {
+          console.log('Fetched Tours:', response.data); // Выводим полученные данные
+          // Используем непосредственно строку image_url
+          this.tours = response.data;
+          this.loading = false;
+        })
+        .catch((error) => {
+          console.error('Ошибка при получении туров:', error);
+          this.loading = false;
+        });
+    },
 
-    console.log('Received Image URL:', url); // Выводим полученный URL
-    if (url && !url.startsWith('http')) {
-      const formattedURL = `http://localhost:8080/static/uploads/${url}`;
-      console.log('Formatted Image URL:', formattedURL); // Выводим сформированный URL
-      return formattedURL;
-    } else {
-      console.log('Fallback Image URL:', url || '1.jpg'); // Выводим резервный URL
-      return url || '1.jpg';
+    formatImageUrl(imageURL) {
+      // Если URL пустой, используем изображение-заглушку
+      if (imageURL && !imageURL.startsWith('http')) {
+        return `http://localhost:8080/static/uploads/${imageURL}`;
+      }
+      return imageURL || '1.jpg'; // Фоллбэк, если imageURL пустой
     }
-  }
-
 
   },
 
@@ -163,6 +147,7 @@ formatImageUrl(imageURL) {
   }
 }
 </script>
+
 
 <style scoped>
 /* Общие стили */
