@@ -21,14 +21,14 @@ import (
 )
 
 type Tour struct {
-	ID           uint
-	Name         string
-	Description  string
-	Duration     int
+	ID           uint           `json:"id"`
+	Name         string         `json:"name"`
+	Description  string         `json:"description"`
+	Duration     int            `json:"duration"`
 	Price        float64        `json:"price"`
-	Days         []Day          `gorm:"foreignKey:TourID"`
+	Days         []Day          `jsonb:"days"`
 	ImageURL     sql.NullString `json:"image_url"`
-	DisplayOrder int
+	DisplayOrder int            `json:"display_order"`
 }
 
 type Day struct {
@@ -323,10 +323,54 @@ func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id s
 		return
 	}
 
-	// Обрабатываем запрос
-	var tour Tour
-	if err := json.NewDecoder(r.Body).Decode(&tour); err != nil {
-		http.Error(w, "Failed to decode request body", http.StatusBadRequest)
+	// Проверяем тип контента
+	contentType := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "multipart/form-data") {
+		http.Error(w, "Content-Type must be multipart/form-data", http.StatusBadRequest)
+		return
+	}
+
+	// Парсим multipart данные
+	if err := r.ParseMultipartForm(10 << 20); err != nil { // Лимит 10MB для файла
+		http.Error(w, "Failed to parse multipart form", http.StatusBadRequest)
+		return
+	}
+
+	// Читаем текстовые поля
+	name := r.FormValue("name")
+	description := r.FormValue("description")
+	duration, err := strconv.Atoi(r.FormValue("duration"))
+	if err != nil {
+		http.Error(w, "Invalid duration value", http.StatusBadRequest)
+		return
+	}
+	price, err := strconv.ParseFloat(r.FormValue("price"), 64)
+	if err != nil {
+		http.Error(w, "Invalid price value", http.StatusBadRequest)
+		return
+	}
+
+	// Читаем файл изображения, если он есть
+	var imagePath string
+	file, handler, err := r.FormFile("image")
+	if err == nil {
+		defer file.Close()
+
+		// Сохраняем файл изображения
+		imagePath = "./uploads/" + handler.Filename
+		out, err := os.Create(imagePath)
+		if err != nil {
+			http.Error(w, "Unable to save image", http.StatusInternalServerError)
+			return
+		}
+		defer out.Close()
+		_, err = io.Copy(out, file)
+		if err != nil {
+			http.Error(w, "Unable to save image", http.StatusInternalServerError)
+			return
+		}
+	} else if err != http.ErrMissingFile {
+		http.Error(w, "Failed to process image", http.StatusBadRequest)
 		return
 	}
 
@@ -337,31 +381,51 @@ func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id s
 		return
 	}
 
-	// Обновляем данные о туре
-	if err := tx.Model(&Tour{}).Where("id = ?", tourID).Updates(Tour{
-		Name:        tour.Name,
-		Description: tour.Description,
-		Duration:    tour.Duration,
-		Price:       tour.Price,
-		ImageURL:    tour.ImageURL,
-	}).Error; err != nil {
+	// Получаем существующий тур для обновления
+	var tour Tour
+	if err := tx.First(&tour, tourID).Error; err != nil {
 		tx.Rollback()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Tour not found", http.StatusNotFound)
 		return
 	}
 
-	// Обновляем дни тура
+	// Обновляем данные о туре
+	tour.Name = name
+	tour.Description = description
+	tour.Duration = duration
+	tour.Price = price
+	if imagePath != "" {
+		tour.ImageURL = imagePath // Обновляем путь к изображению только если новое изображение загружено
+	}
+
+	// Обновляем запись о туре
+	if err := tx.Save(&tour).Error; err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to update tour", http.StatusInternalServerError)
+		return
+	}
+
+	// Удаляем старые дни тура
 	if err := tx.Where("tour_id = ?", tourID).Delete(&Day{}).Error; err != nil {
 		tx.Rollback()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to update tour days", http.StatusInternalServerError)
 		return
 	}
 
 	// Вставляем обновленные дни
-	for _, day := range tour.Days {
+	days := r.FormValue("days") // Предположим, что дни приходят в виде JSON строки
+	var tourDays []Day
+	if err := json.Unmarshal([]byte(days), &tourDays); err != nil {
+		tx.Rollback()
+		http.Error(w, "Invalid days format", http.StatusBadRequest)
+		return
+	}
+
+	for _, day := range tourDays {
+		day.TourID = tourID
 		if err := tx.Create(&day).Error; err != nil {
 			tx.Rollback()
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Failed to update tour days", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -372,6 +436,7 @@ func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id s
 		return
 	}
 
+	// Успешный ответ
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "Tour updated successfully")
 }

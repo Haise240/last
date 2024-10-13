@@ -1,4 +1,3 @@
-
 <template>
   <div>
     <!-- Header Section -->
@@ -14,34 +13,13 @@
     <!-- Filters and Sorting Section -->
     <section class="filters">
       <div class="container">
-        <div class="filter-group">
-          <label for="duration">Длительность:</label>
-          <select id="duration" v-model="filters.duration">
-            <option value="">Любая</option>
-            <option value="1-3">1-3 дня</option>
-            <option value="4-7">4-7 дней</option>
-            <option value="8+">8+ дней</option>
-          </select>
-        </div>
 
-        <div class="filter-group">
-          <label for="price">Цена:</label>
-          <select id="price" v-model="filters.priceRange">
-            <option value="">Любая</option>
-            <option value="0-20000">до 20,000 руб.</option>
-            <option value="20000-50000">20,000 - 50,000 руб.</option>
-            <option value="50000+">более 50,000 руб.</option>
-          </select>
-        </div>
-
-        <div class="filter-group">
-          <label for="sort">Сортировка:</label>
-          <select id="sort" v-model="sortOrder">
-            <option value="price-asc">Цена: по возрастанию</option>
-            <option value="price-desc">Цена: по убыванию</option>
-            <option value="duration-asc">Длительность: по возрастанию</option>
-            <option value="duration-desc">Длительность: по убыванию</option>
-          </select>
+        <!-- Sorting Buttons Section -->
+        <div class="sorting-buttons">
+          <button @click="setSortOrder('price-asc')" :class="{ active: sortOrder === 'price-asc' }">Цена ↑</button>
+          <button @click="setSortOrder('price-desc')" :class="{ active: sortOrder === 'price-desc' }">Цена ↓</button>
+          <button @click="setSortOrder('duration-asc')" :class="{ active: sortOrder === 'duration-asc' }">Длительность ↑</button>
+          <button @click="setSortOrder('duration-desc')" :class="{ active: sortOrder === 'duration-desc' }">Длительность ↓</button>
         </div>
       </div>
     </section>
@@ -53,12 +31,15 @@
         <div v-else-if="filteredAndSortedTours.length === 0">Нет доступных туров по выбранным фильтрам.</div>
         <div v-else class="tour-cards">
           <div v-for="tour in filteredAndSortedTours" :key="tour.id" class="tour-card">
-            <img :src="formatImageUrl(tour.image_url)" :alt="tour.name" />
-            <h1 class="tour-title">{{ tour.name }}</h1>
+            <img :src="formatImageUrl(tour.image_url)" :alt="tour.name || 'Изображение тура'" />
+
+            <h1 class="tour-title">{{ tour.name || 'Название не указано' }}</h1>
+
             <p class="tour-info">
-              <span>Длительность: {{ tour.duration }} дней </span>
+              <span>Длительность: {{ tour.duration || 'не указано' }} дней</span>
               <span class="price">Цена: {{ tour.price }} руб.</span>
             </p>
+
             <nuxt-link :to="`/tour/${tour.id}`" class="btn">Подробнее</nuxt-link>
           </div>
         </div>
@@ -78,7 +59,7 @@ export default {
         duration: '',
         priceRange: ''
       },
-      sortOrder: 'price-asc',
+      sortOrder: 'display-order', // Сортировка по умолчанию
       tours: [], // Массив туров
       loading: true // Индикатор загрузки
     };
@@ -110,10 +91,21 @@ export default {
         });
       }
 
-      // Теперь просто возвращаем отсортированный массив без дополнительной сортировки
+      // Сортировка по DisplayOrder
+      if (this.sortOrder === 'display-order') {
+        filteredTours.sort((a, b) => a.DisplayOrder - b.DisplayOrder);
+      } else if (this.sortOrder === 'price-asc') {
+        filteredTours.sort((a, b) => a.price - b.price);
+      } else if (this.sortOrder === 'price-desc') {
+        filteredTours.sort((a, b) => b.price - a.price);
+      } else if (this.sortOrder === 'duration-asc') {
+        filteredTours.sort((a, b) => a.duration - b.duration);
+      } else if (this.sortOrder === 'duration-desc') {
+        filteredTours.sort((a, b) => b.duration - a.duration);
+      }
+
       return filteredTours;
     }
-
   },
 
   methods: {
@@ -121,8 +113,6 @@ export default {
       axios
         .get('http://localhost:8080/api/tours')
         .then((response) => {
-          console.log('Fetched Tours:', response.data); // Выводим полученные данные
-          // Используем непосредственно строку image_url
           this.tours = response.data;
           this.loading = false;
         })
@@ -133,20 +123,24 @@ export default {
     },
 
     formatImageUrl(imageURL) {
-      // Если URL пустой, используем изображение-заглушку
-      if (imageURL && !imageURL.startsWith('http')) {
-        return `http://localhost:8080/static/uploads/${imageURL}`;
+      if (imageURL && imageURL.Valid) {
+        return imageURL.String;
       }
-      return imageURL || '1.jpg'; // Фоллбэк, если imageURL пустой
-    }
+      return '1.jpg'; // Фоллбэк изображение
+    },
 
+    setSortOrder(order) {
+      this.sortOrder = order;
+    }
   },
+
 
   mounted() {
     this.fetchTours();
   }
-}
+};
 </script>
+
 
 
 <style scoped>
@@ -181,28 +175,43 @@ body {
   margin: 0 auto;
 }
 
-/* Стили для секции фильтров */
-.filters {
-  background: #f9f9f9;
-  padding: 20px 0;
-  border-bottom: 1px solid #ddd;
+/* Стили для кнопок фильтрации и сортировки */
+.filter-buttons,
+.sorting-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.filter-group {
-  display: inline-block;
-  margin-right: 15px;
-}
-
-.filter-group label {
-  margin-right: 10px;
-}
-
-.filter-group select {
-  padding: 8px;
-  border: 1px solid #ddd;
+.filter-buttons button,
+.sorting-buttons button {
+  padding: 10px 20px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
   border-radius: 5px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
 }
 
+.filter-buttons button:hover,
+.sorting-buttons button:hover {
+  background-color: #e0e0e0;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filter-buttons button.active,
+.sorting-buttons button.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.filter-buttons button.active:hover,
+.sorting-buttons button.active:hover {
+  background-color: #0056b3;
+}
 
 /* Стили для секции каталога туров */
 .tours-catalog {
@@ -223,7 +232,7 @@ body {
   overflow: hidden;
   flex-basis: calc(33.333% - 20px);
   display: flex;
-  flex-direction: column; /* Вертикальная структура */
+  flex-direction: column;
   text-align: center;
 }
 
@@ -239,7 +248,6 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-
   padding: 15px;
 }
 
@@ -258,9 +266,9 @@ body {
 
 .btn {
   max-width: 70%;
-  margin: auto ; /* Выровнять по центру с верхним отступом */
+  margin: auto;
   margin-bottom: 10px;
-  padding: auto ;
+  padding: 10px;
   background: #42b983;
   color: white;
   text-decoration: none;
@@ -273,16 +281,10 @@ body {
   background: #369972;
 }
 
-/* Адаптивные стили */
+/* Адаптивные стили для планшетов */
 @media (max-width: 1024px) {
   .tour-card {
     flex-basis: calc(50% - 20px);
-  }
-}
-
-@media (max-width: 768px) {
-  .tour-card {
-    flex-basis: calc(100% - 20px);
   }
 
   .page-header h1 {
@@ -290,21 +292,75 @@ body {
   }
 
   .page-header p {
+    font-size: 1.1em;
+  }
+}
+
+/* Адаптивные стили для мобильных устройств */
+@media (max-width: 768px) {
+  .tour-card {
+    flex-basis: 100%;
+  }
+
+  .tour-card img {
+    height: 150px;
+  }
+
+  .page-header h1 {
+    font-size: 1.8em;
+  }
+
+  .page-header p {
     font-size: 1em;
   }
 
-  .filter-group {
-    display: block;
-    margin-bottom: 10px;
-  }
-
-  .filter-group label {
-    display: block;
-    margin-bottom: 5px;
-  }
-
-  .filter-group select {
+  .toggle-filters-btn {
     width: 100%;
+  }
+
+  .sorting-buttons {
+    flex-direction: column;
+  }
+
+  .sorting-buttons button {
+    width: 100%;
+  }
+
+  .tour-title {
+    font-size: 1.1em;
+  }
+
+  .tour-info {
+    font-size: 0.9em;
+  }
+
+  .btn {
+    padding: 8px 0;
+    font-size: 0.9em;
+  }
+}
+
+/* Дополнительные стили для очень маленьких экранов (телефоны) */
+@media (max-width: 480px) {
+  .filters{
+    margin: 0;
+    padding: 20px;
+  }
+  .page-header h1 {
+    font-size: 1.5em;
+  }
+
+  .page-header p {
+    font-size: 0.9em;
+  }
+
+  .tour-card img {
+    height: 130px;
+  }
+
+  .btn {
+    width:30% ;
+    font-size: 1em;
   }
 }
 </style>

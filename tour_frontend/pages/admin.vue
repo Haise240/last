@@ -257,11 +257,11 @@ function resetTourForm() {
 function editTour(tour) {
   editingTour.value = true;
 
-  // Загружаем все данные о туре, включая дни и изображение
+  // Проверяем, есть ли поле days, если нет, инициализируем пустым массивом
   tourForm.value = { 
     ...tour, 
-    days: tour.days.map((day, index) => ({
-      dayNumber: index + 1, // Используйте индекс для нумерации
+    days: (tour.days || []).map((day, index) => ({
+      dayNumber: index + 1, // Используем индекс для нумерации
       details: day.details || '' 
     })),
     imageUrl: tour.imageUrl // Устанавливаем текущее изображение
@@ -269,6 +269,7 @@ function editTour(tour) {
 
   setCurrentTour(tour.id);
 }
+
 
 
 
@@ -331,10 +332,12 @@ async function saveTour() {
     formData.append('duration', tourForm.value.duration);
     formData.append('price', tourForm.value.price);
 
-    // Добавляем дни тура
+    // Сериализуем и добавляем дни тура
+    // Дни тура сериализуются как JSON-строка
     if (tourForm.value.days && tourForm.value.days.length > 0) {
       formData.append('days', JSON.stringify(tourForm.value.days));
     }
+
 
     // Если изображение загружено, добавляем его
     if (tourForm.value.image) {
