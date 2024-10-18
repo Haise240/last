@@ -35,8 +35,6 @@
     </div>
   </div>
     </div>
-
-  
     </div>
 
 
@@ -114,7 +112,7 @@ const tourForm = ref({
   duration: null,
   price: null,
   days: [],
-  image: null
+  imageUrl: null
 });
 
 // Метод для переключения видимости галереи
@@ -264,11 +262,12 @@ function editTour(tour) {
       dayNumber: index + 1, // Используем индекс для нумерации
       details: day.details || '' 
     })),
-    imageUrl: tour.imageUrl // Устанавливаем текущее изображение
+    imageUrl: tour.imageUrl || ''  // Устанавливаем текущее изображение или пустое значение
   };
 
   setCurrentTour(tour.id);
 }
+
 
 
 
@@ -321,6 +320,8 @@ function removeDay(index) {
 }
 
 
+
+
 // Метод для сохранения тура
 async function saveTour() {
   try {
@@ -333,43 +334,46 @@ async function saveTour() {
     formData.append('price', tourForm.value.price);
 
     // Сериализуем и добавляем дни тура
-    // Дни тура сериализуются как JSON-строка
-    if (tourForm.value.days && tourForm.value.days.length > 0) {
-      formData.append('days', JSON.stringify(tourForm.value.days));
-    }
+    formData.append('days', JSON.stringify(tourForm.value.days));
 
-
-    // Если изображение загружено, добавляем его
+    // Добавляем изображение только если оно было загружено
     if (tourForm.value.image) {
       formData.append('image', tourForm.value.image);
     }
 
     // Если редактируем тур
     if (editingTour.value && tourForm.value.id) {
-      await axios.put(`http://localhost:8080/api/tours/${tourForm.value.id}`, formData, {
+      const response = await axios.put(`http://localhost:8080/api/tours/${tourForm.value.id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
+      console.log("PUT response:", response);
     } else {
       // Создаем новый тур через POST запрос
-      await axios.post(`http://localhost:8080/api/tours`, formData, {
+      const response = await axios.post(`http://localhost:8080/api/tours`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
+      console.log("POST response:", response);
     }
 
-    // После успешного сохранения обновляем список туров
+    // Обновляем список туров и сбрасываем форму
     await fetchTours();
     cancelEditTour();
     alert('Тур успешно сохранен!');
-    
   } catch (error) {
     console.error('Ошибка при сохранении тура:', error);
-    alert('Произошла ошибка при сохранении тура. Пожалуйста, проверьте данные и попробуйте снова.');
+    if (error.response) {
+      console.error('Backend error:', error.response.data);
+      alert(`Ошибка при сохранении тура: ${error.response.data}`);
+    } else {
+      alert('Ошибка при сохранении тура.');
+    }
   }
 }
+
 
 
 

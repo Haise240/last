@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -215,7 +216,7 @@ func createTourHandler(db *gorm.DB) http.HandlerFunc {
 		defer file.Close()
 
 		// Сохраняем изображение на диск
-		imagePath, err := saveImageTour(file, header, "./static/uploads")
+		imagePath, err := saveImageTour(file, header, "/static/uploads")
 		if err != nil {
 			http.Error(w, "Failed to save image", http.StatusInternalServerError)
 			return
@@ -316,125 +317,149 @@ func getTour(db *gorm.DB, w http.ResponseWriter, r *http.Request, id string) {
 }
 
 func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id string) {
-	// Конвертируем ID тура в целое число
-	tourID, err := strconv.Atoi(id)
+	log.Println("Starting updateTourHandler")
+
+	// Попытка конвертировать строковый ID в uint
+	tourID, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
+		log.Printf("Invalid tour ID: %s", id)
 		http.Error(w, "Invalid tour ID", http.StatusBadRequest)
 		return
 	}
+	uintTourID := uint(tourID)
+	log.Printf("Parsed tour ID: %d", uintTourID)
 
-	// Проверяем тип контента
+	// Проверка типа контента
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "multipart/form-data") {
+		log.Printf("Invalid Content-Type: %s", contentType)
 		http.Error(w, "Content-Type must be multipart/form-data", http.StatusBadRequest)
 		return
 	}
 
-	// Парсим multipart данные
-	if err := r.ParseMultipartForm(10 << 20); err != nil { // Лимит 10MB для файла
+	// Парсинг формы
+	if err := r.ParseMultipartForm(10 << 20); err != nil { // Лимит 10MB
+		log.Printf("Failed to parse multipart form: %v", err)
 		http.Error(w, "Failed to parse multipart form", http.StatusBadRequest)
 		return
 	}
 
-	// Читаем текстовые поля
+	// Чтение полей формы
 	name := r.FormValue("name")
 	description := r.FormValue("description")
 	duration, err := strconv.Atoi(r.FormValue("duration"))
 	if err != nil {
+		log.Printf("Invalid duration value: %v", err)
 		http.Error(w, "Invalid duration value", http.StatusBadRequest)
 		return
 	}
 	price, err := strconv.ParseFloat(r.FormValue("price"), 64)
 	if err != nil {
+		log.Printf("Invalid price value: %v", err)
 		http.Error(w, "Invalid price value", http.StatusBadRequest)
 		return
 	}
+	log.Printf("Received data - Name: %s, Description: %s, Duration: %d, Price: %.2f", name, description, duration, price)
 
-	// Читаем файл изображения, если он есть
+	// Обработка изображения
 	var imagePath string
-	file, handler, err := r.FormFile("image")
+	file, header, err := r.FormFile("image")
 	if err == nil {
 		defer file.Close()
-
-		// Сохраняем файл изображения
-		imagePath = "./uploads/" + handler.Filename
-		out, err := os.Create(imagePath)
+		uploadDir := filepath.Join("static", "uploads")
+		imagePath, err = saveImageTour(file, header, uploadDir)
 		if err != nil {
-			http.Error(w, "Unable to save image", http.StatusInternalServerError)
+			log.Printf("Failed to save image: %v", err)
+			http.Error(w, "Failed to save image: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		defer out.Close()
-		_, err = io.Copy(out, file)
-		if err != nil {
-			http.Error(w, "Unable to save image", http.StatusInternalServerError)
-			return
-		}
+		log.Printf("Image saved to path: %s", imagePath)
 	} else if err != http.ErrMissingFile {
+		log.Printf("Failed to process image: %v", err)
 		http.Error(w, "Failed to process image", http.StatusBadRequest)
 		return
+	} else {
+		log.Println("No new image uploaded")
 	}
 
-	// Начинаем транзакцию
+	// Начало транзакции
 	tx := db.Begin()
-	if err := tx.Error; err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if tx.Error != nil {
+		log.Printf("Failed to begin transaction: %v", tx.Error)
+		http.Error(w, tx.Error.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Получаем существующий тур для обновления
+	// Получение существующего тура
 	var tour Tour
-	if err := tx.First(&tour, tourID).Error; err != nil {
+	if err := tx.First(&tour, uintTourID).Error; err != nil {
+		log.Printf("Tour not found: %d", uintTourID)
 		tx.Rollback()
 		http.Error(w, "Tour not found", http.StatusNotFound)
 		return
 	}
+	log.Printf("Updating tour: %+v", tour)
 
-	// Обновляем данные о туре
+	// Обновление полей тура
 	tour.Name = name
 	tour.Description = description
 	tour.Duration = duration
 	tour.Price = price
 	if imagePath != "" {
-		tour.ImageURL = imagePath // Обновляем путь к изображению только если новое изображение загружено
+		tour.ImageURL = sql.NullString{
+			String: "/" + imagePath,
+			Valid:  true,
+		}
 	}
 
-	// Обновляем запись о туре
+	// Сохранение обновленного тура
 	if err := tx.Save(&tour).Error; err != nil {
+		log.Printf("Failed to save updated tour: %v", err)
 		tx.Rollback()
 		http.Error(w, "Failed to update tour", http.StatusInternalServerError)
 		return
 	}
+	log.Println("Tour updated successfully")
 
-	// Удаляем старые дни тура
-	if err := tx.Where("tour_id = ?", tourID).Delete(&Day{}).Error; err != nil {
+	// Удаление существующих дней тура
+	if err := tx.Where("tour_id = ?", uintTourID).Delete(&Day{}).Error; err != nil {
+		log.Printf("Failed to delete existing days: %v", err)
 		tx.Rollback()
 		http.Error(w, "Failed to update tour days", http.StatusInternalServerError)
 		return
 	}
+	log.Println("Existing days deleted successfully")
 
-	// Вставляем обновленные дни
-	days := r.FormValue("days") // Предположим, что дни приходят в виде JSON строки
+	// Обработка и добавление новых дней тура
+	days := r.FormValue("days")
+	log.Printf("Received days data: %s", days)
 	var tourDays []Day
 	if err := json.Unmarshal([]byte(days), &tourDays); err != nil {
+		log.Printf("Invalid days format: %v", err)
 		tx.Rollback()
 		http.Error(w, "Invalid days format", http.StatusBadRequest)
 		return
 	}
 
 	for _, day := range tourDays {
-		day.TourID = tourID
+		day.TourID = int(uintTourID) // Убедитесь, что типы совпадают
 		if err := tx.Create(&day).Error; err != nil {
+			log.Printf("Failed to create day: %v", err)
 			tx.Rollback()
 			http.Error(w, "Failed to update tour days", http.StatusInternalServerError)
 			return
 		}
+		log.Printf("Day added: %+v", day)
 	}
 
-	// Коммитим транзакцию
+	// Коммит транзакции
 	if err := tx.Commit().Error; err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	log.Println("Tour updated and transaction committed successfully")
 
 	// Успешный ответ
 	w.WriteHeader(http.StatusOK)
@@ -458,16 +483,15 @@ func deleteTour(db *gorm.DB, w http.ResponseWriter, r *http.Request, id string) 
 	w.WriteHeader(http.StatusNoContent) // 204 No Content
 }
 
-// Функция для сохранения изображения на диск
-// Функция для сохранения изображения тура
 func saveImageTour(file multipart.File, header *multipart.FileHeader, uploadDir string) (string, error) {
 	// Создаем директорию, если она не существует
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 		return "", fmt.Errorf("failed to create directory: %v", err)
 	}
 
-	// Формируем путь для сохранения изображения
-	imagePath := filepath.Join(uploadDir, header.Filename)
+	// Формируем уникальное имя файла, чтобы избежать конфликтов
+	uniqueFileName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), header.Filename)
+	imagePath := filepath.Join(uploadDir, uniqueFileName)
 
 	// Создаем файл
 	out, err := os.Create(imagePath)
@@ -481,8 +505,10 @@ func saveImageTour(file multipart.File, header *multipart.FileHeader, uploadDir 
 		return "", fmt.Errorf("failed to save file: %v", err)
 	}
 
-	// Возвращаем относительный путь к изображению
-	return imagePath, nil
+	// Возвращаем относительный путь к изображению для использования в URL
+	relativePath := "/" + filepath.ToSlash(imagePath)
+	// Преобразуем в UNIX-совместимый путь
+	return relativePath, nil
 }
 
 //СООБЩЕНИЯ
