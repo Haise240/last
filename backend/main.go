@@ -27,7 +27,7 @@ type Tour struct {
 	Description  string         `json:"description"`
 	Duration     int            `json:"duration"`
 	Price        float64        `json:"price"`
-	Days         []Day          `jsonb:"days"`
+	Days         []Day          `json:"days"`
 	ImageURL     sql.NullString `json:"image_url"`
 	DisplayOrder int            `json:"display_order"`
 }
@@ -421,35 +421,68 @@ func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id s
 	}
 	log.Println("Tour updated successfully")
 
-	// Удаление существующих дней тура
-	if err := tx.Where("tour_id = ?", uintTourID).Delete(&Day{}).Error; err != nil {
-		log.Printf("Failed to delete existing days: %v", err)
-		tx.Rollback()
-		http.Error(w, "Failed to update tour days", http.StatusInternalServerError)
-		return
-	}
-	log.Println("Existing days deleted successfully")
-
 	// Обработка и добавление новых дней тура
 	days := r.FormValue("days")
-	log.Printf("Received days data: %s", days)
-	var tourDays []Day
-	if err := json.Unmarshal([]byte(days), &tourDays); err != nil {
-		log.Printf("Invalid days format: %v", err)
-		tx.Rollback()
-		http.Error(w, "Invalid days format", http.StatusBadRequest)
-		return
-	}
-
-	for _, day := range tourDays {
-		day.TourID = int(uintTourID) // Убедитесь, что типы совпадают
-		if err := tx.Create(&day).Error; err != nil {
-			log.Printf("Failed to create day: %v", err)
+	if days != "" {
+		log.Printf("Received days data: %s", days)
+		var tourDays []Day
+		if err := json.Unmarshal([]byte(days), &tourDays); err != nil {
+			log.Printf("Invalid days format: %v", err)
 			tx.Rollback()
-			http.Error(w, "Failed to update tour days", http.StatusInternalServerError)
+			http.Error(w, "Invalid days format", http.StatusBadRequest)
 			return
 		}
-		log.Printf("Day added: %+v", day)
+
+		// Получаем текущие дни тура из таблицы "tour_days"
+		var existingDays []Day
+		if err := tx.Table("tour_days").Where("tour_id = ?", uintTourID).Find(&existingDays).Error; err != nil {
+			log.Printf("Failed to fetch existing days: %v", err)
+			tx.Rollback()
+			http.Error(w, "Failed to fetch existing tour days", http.StatusInternalServerError)
+			return
+		}
+
+		// Удаляем только те дни, которых нет в новом списке
+		for _, existingDay := range existingDays {
+			dayExists := false
+			for _, newDay := range tourDays {
+				if existingDay.ID == newDay.ID {
+					dayExists = true
+					break
+				}
+			}
+			if !dayExists {
+				if err := tx.Table("tour_days").Delete(&existingDay).Error; err != nil {
+					log.Printf("Failed to delete day: %v", err)
+					tx.Rollback()
+					http.Error(w, "Failed to update tour days", http.StatusInternalServerError)
+					return
+				}
+			}
+		}
+
+		// Добавляем или обновляем дни
+		for _, newDay := range tourDays {
+			newDay.TourID = int(uintTourID)
+			if newDay.ID == 0 {
+				// Добавляем новый день
+				if err := tx.Table("tour_days").Create(&newDay).Error; err != nil {
+					log.Printf("Failed to create day: %v", err)
+					tx.Rollback()
+					http.Error(w, "Failed to add tour day", http.StatusInternalServerError)
+					return
+				}
+			} else {
+				// Обновляем существующий день
+				if err := tx.Table("tour_days").Save(&newDay).Error; err != nil {
+					log.Printf("Failed to update day: %v", err)
+					tx.Rollback()
+					http.Error(w, "Failed to update tour day", http.StatusInternalServerError)
+					return
+				}
+			}
+			log.Printf("Day processed: %+v", newDay)
+		}
 	}
 
 	// Коммит транзакции
