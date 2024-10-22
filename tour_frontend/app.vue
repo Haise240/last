@@ -65,11 +65,10 @@ body {
   font-family: 'Open Sans', sans-serif;
   color: #333;
   line-height: 1.6;
-  background-color: #fafafa; /* Легкий фон */
+  background-color: #fafafa;
   display: flex;
   flex-direction: column;
-  min-height: 100vh; /* Минимальная высота на весь экран */
-  margin: 0;
+  min-height: 100vh;
 }
 
 a {
@@ -77,22 +76,14 @@ a {
   color: inherit;
 }
 
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
 #app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh; /* Контейнер занимает всю высоту окна */
+  min-height: 100vh;
 }
 
 main {
-  flex: 1; /* Этот блок занимает оставшееся пространство между header и footer */
+  flex: 1;
 }
 
 footer {
@@ -100,7 +91,7 @@ footer {
   color: #fff;
   text-align: center;
   padding: 15px 0;
-  margin-top: auto; /* Прижимаем футер к низу */
+  margin-top: auto;
 }
 
 footer .footer-links {
@@ -127,21 +118,6 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
-.btn {
-  display: inline-block;
-  padding: 10px 20px;
-  background-color: #509496; /* Цвет кнопки */
-  color: white;
-  border-radius: 5px;
-  text-align: center;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn:hover {
-  background-color: #509496; /* Цвет кнопки при наведении */
-}
-
 .container {
   width: 90%;
   margin: 0 auto;
@@ -151,7 +127,7 @@ h1, h2, h3, h4, h5, h6 {
 header {
   background: #f4f4f4;
   color: #333;
-  width: 100%; /* Ширина на весь экран */
+  width: 100%;
   padding: 20px 0;
 }
 
@@ -164,6 +140,7 @@ header {
 }
 
 .desktop-nav .logo h1 {
+  margin-left: 10%;
   font-size: 28px;
   font-weight: 600;
   color: #35495e;
@@ -172,7 +149,7 @@ header {
 .desktop-nav .nav-links {
   list-style: none;
   display: flex;
-  align-items: center;
+  align-items: normal;
 }
 
 .desktop-nav .nav-links li {
@@ -226,12 +203,12 @@ section {
     display: none;
   }
 
-  .footer {
+  footer {
     display: none;
   }
 
   .mobile-nav {
-    height: 60px; /* Задаём разумную высоту панели */
+    height: 8%;
     z-index: 1;
     display: flex;
   }
