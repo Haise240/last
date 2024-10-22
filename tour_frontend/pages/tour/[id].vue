@@ -53,7 +53,7 @@ const tourId = route.params.id;
 // Состояния загрузки и ошибок
 const loading = ref(true);
 const error = ref(null);
-const tour = ref(null);
+const tour = ref(null); 
 const galleryImages = ref([]);
 
 async function fetchTourData() {
