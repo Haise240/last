@@ -24,7 +24,7 @@
           <h2>Наша миссия</h2>
           <p>
             Мы верим, что путешествия обогащают жизнь и открывают новые горизонты. Наша цель — предложить вам 
-            уникальные туры, которые сочетает в себе приключения, культурные открытия и отдых на природе. 
+            уникальные туры, которые сочетают в себе приключения, культурные открытия и отдых на природе. 
             Мы стремимся предоставить каждому клиенту незабываемый опыт.
           </p>
         </div>
@@ -32,10 +32,10 @@
         <div class="about-text">
           <h2>Почему выбирают нас</h2>
           <ul>
-            <p>Опытные гиды и экскурсоводы</p>
-            <p>Индивидуальный подход к каждому клиенту</p>
-            <p>Безопасность и комфорт на протяжении всего тура</p>
-            <p>Широкий выбор маршрутов и программ</p>
+            <li>Опытные гиды и экскурсоводы</li>
+            <li>Индивидуальный подход к каждому клиенту</li>
+            <li>Безопасность и комфорт на протяжении всего тура</li>
+            <li>Широкий выбор маршрутов и программ</li>
           </ul>
         </div>
       </div>
@@ -43,9 +43,10 @@
   </div>
 </template>
 
-<style scoped>
-/* Основные стили для страницы AboutPage.vue */
 
+
+<style scoped>
+/* Header Styling */
 .page-header {
   background: linear-gradient(135deg, #355e5e, #35495e);
   color: white;
@@ -55,14 +56,15 @@
 }
 
 .page-header h1 {
-  font-size: 36px;
+  font-size: 2.5em;
   margin-bottom: 10px;
 }
 
 .page-header p {
-  font-size: 18px;
+  font-size: 1.2em;
 }
 
+/* About Content Styling */
 .about-content {
   padding: 50px 0;
 }
@@ -72,12 +74,12 @@
 }
 
 .about-text h2 {
-  font-size: 28px;
+  font-size: 1.8em;
   margin-bottom: 15px;
 }
 
 .about-text p {
-  font-size: 16px;
+  font-size: 1em;
   line-height: 1.6;
 }
 
@@ -86,6 +88,11 @@
   padding-left: 20px;
 }
 
+.about-text ul li {
+  margin-bottom: 8px;
+}
+
+/* Team Section Styling */
 .team-section {
   background: #f4f4f4;
   padding: 50px 0;
@@ -120,6 +127,7 @@
   font-size: 16px;
 }
 
+/* Testimonials Section Styling */
 .testimonials-section {
   padding: 50px 0;
 }
@@ -148,5 +156,22 @@
   font-size: 16px;
   color: #35495e;
   text-align: right;
+}
+
+/* Responsive Styling */
+@media (max-width: 768px) {
+  .team-member {
+    flex-basis: 100%;
+    margin-bottom: 20px;
+  }
+
+  .testimonial {
+    flex-basis: 100%;
+    margin-bottom: 20px;
+  }
+
+  .about-text h2 {
+    font-size: 1.5em;
+  }
 }
 </style>

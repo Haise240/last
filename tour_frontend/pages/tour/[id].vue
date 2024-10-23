@@ -19,6 +19,20 @@
           pagination
           navigation
           loop
+          :breakpoints="{
+            768: {
+              slidesPerView: 1,
+              spaceBetween: 20
+            },
+            1024: {
+              slidesPerView: 2,
+              spaceBetween: 30
+            },
+            1440: {
+              slidesPerView: 3,
+              spaceBetween: 30
+            }
+          }"
         >
           <swiper-slide v-for="(image, index) in galleryImages" :key="index">
             <img :src="image" alt="Tour Image" class="gallery-image" />
@@ -29,9 +43,9 @@
       <div class="tour-days">
         <h2>Программа тура по дням</h2>
         <div v-for="(day, index) in tour.days" :key="index" class="tour-day">
-          <div class="day-number">День {{ day.dayNumber }}</div>
-          <div class="day-details">{{ day.details }}</div>
-        </div>
+  <div class="day-number">День {{ index + 1 }}</div>
+  <div class="day-details">{{ day.details }}</div>
+</div>
       </div>
     </div>
   </div>
@@ -50,7 +64,6 @@ import { useRoute } from '#app';
 const route = useRoute();
 const tourId = route.params.id;
 
-// Состояния загрузки и ошибок
 const loading = ref(true);
 const error = ref(null);
 const tour = ref(null); 
@@ -61,14 +74,12 @@ async function fetchTourData() {
   error.value = null;
 
   try {
-    // Запрос на получение данных о туре
     const { data: tourData } = await useFetch(`http://localhost:8080/api/tours/${tourId}`);
     if (!tourData.value) {
       throw new Error('Данные о туре не найдены');
     }
     tour.value = tourData.value;
 
-    // Запрос на получение галереи
     const { data: galleryData } = await useFetch('http://localhost:8080/api/gallery');
     if (galleryData.value) {
       galleryImages.value = galleryData.value;
@@ -80,20 +91,11 @@ async function fetchTourData() {
   }
 }
 
-// Вызов функции для получения данных
 fetchTourData();
 </script>
 
-
-
-
 <style scoped>
-/* Стили для всей страницы */
-body {
-  margin: 0;
-  font-family: 'Roboto', sans-serif;
-}
-
+/* Page Styles */
 .page-header {
   background: linear-gradient(135deg, #355e5e, #35495e);
   color: white;
@@ -132,16 +134,15 @@ body {
   font-weight: bold;
 }
 
-/* Стили для слайдера */
+/* Slider Styles */
 .swiper {
   width: 100%;
-  height: auto; /* Автоматическая высота */
   margin-bottom: 40px;
 }
 
 .gallery-image {
   width: 100%;
-  height: 300px; /* Задайте высоту для всех изображений */
+  height: 300px;
   object-fit: cover;
 }
 
@@ -150,6 +151,7 @@ body {
   font-size: 1.5em;
 }
 
+/* Tour Days */
 .tour-days {
   margin-top: 30px;
 }
@@ -192,10 +194,6 @@ body {
     font-size: 1em;
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .tour-info p {
-    margin-bottom: 10px;
   }
 
   .day-number {
