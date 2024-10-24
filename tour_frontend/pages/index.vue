@@ -210,6 +210,12 @@ body {
   background: #f4f4f4;
 }
 
+.tours h2{
+  font-size: 2.5rem;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
 .container {
   width: 90%;
   max-width: 1200px;
@@ -267,6 +273,7 @@ body {
 }
 
 .advantages h2 {
+  font-size: 2.5rem;
   text-align: center;
   margin-bottom: 40px;
 }
@@ -302,6 +309,10 @@ body {
   color: white;
 }
 
+.contact-info h2{
+  font-size: 2.5rem;
+}
+
 .telegram-button {
   background: white;
   color: #42b983;
@@ -318,8 +329,13 @@ body {
 
 /* Contact Section */
 .contact {
+  
   padding: 60px 0;
   background: #f9f9f9;
+}
+
+.contact h2{
+  font-size: 2.5rem;
 }
 
 .phone {
