@@ -131,16 +131,21 @@ header {
   padding: 20px 0;
 }
 
-.desktop-nav {
+.desktop-nav nav {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  align-items: center; /* Выровнять элементы по вертикали */
+  justify-content: space-between; /* Логотип слева, ссылки справа */
   width: 100%;
-  margin: 0 auto;
+  max-width: 1200px; /* Ограничить максимальную ширину */
+  margin: 0 auto; /* Центрировать навигацию */
+  padding: 0 20px; /* Отступы по краям */
+}
+
+.desktop-nav .logo {
+  flex-shrink: 0; /* Логотип не сжимается */
 }
 
 .desktop-nav .logo h1 {
-  margin-left: 10%;
   font-size: 28px;
   font-weight: 600;
   color: #35495e;
@@ -149,18 +154,24 @@ header {
 .desktop-nav .nav-links {
   list-style: none;
   display: flex;
-  align-items: normal;
+  gap: 20px; /* Добавить промежуток между ссылками */
+  margin-left: auto; /* Сдвигать список вправо */
 }
 
 .desktop-nav .nav-links li {
-  margin-left: 20px;
+  margin-left: 0;
 }
 
 .desktop-nav .nav-links a {
   color: #35495e;
-  font-size: 16px;
+  font-size: 18px;
+  text-decoration: none;
+  padding: 10px;
 }
 
+.desktop-nav .nav-links a:hover {
+  color: #007bff;
+}
 section {
   padding: 60px 0;
 }

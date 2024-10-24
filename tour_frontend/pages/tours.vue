@@ -148,6 +148,13 @@ body {
   font-family: Arial, sans-serif;
 }
 
+.loading-text, .no-tours-text {
+  min-height: 50px; /* Задайте минимальную высоту для избежания сдвигов */
+  text-align: center;
+  font-size: 1.2em;
+  color: #555;
+}
+
 /* Header Section */
 .page-header {
   background: linear-gradient(135deg, #355e5e, #35495e);
@@ -205,6 +212,7 @@ body {
 /* Tours Catalog Section */
 .tours-catalog {
   padding: 40px 0;
+  min-height: 200px; /* Добавьте минимальную высоту для предотвращения скачков */
 }
 
 .tour-cards {
@@ -230,10 +238,28 @@ body {
 
 .tour-card img {
   width: 100%;
-  height: 180px;
+  height: 180px; /* Фиксированная высота для предотвращения сдвигов */
   object-fit: cover;
   background-color: #f0f0f0;
   border-bottom: 1px solid #ddd;
+  display: block;
+}
+
+/* Skeleton Placeholder для плавной загрузки */
+.tour-card-placeholder {
+  width: 100%;
+  height: 180px;
+  background-color: #f0f0f0;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -500px 0;
+  }
+  100% {
+    background-position: 500px 0;
+  }
 }
 
 .tour-title {
