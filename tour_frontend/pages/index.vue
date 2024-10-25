@@ -334,20 +334,22 @@ body {
 
 /* Contact Section */
 .contact {
-  position: relative;
+  padding: 60px 0;
   background-color: #35495e;
-  background-size: cover;
-  background-position: center;
-  color: white;
-  height: 80vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  color: #fff;
   text-align: center;
 }
 
-.contact h2{
+.contact h2 {
   font-size: 2.5rem;
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.contact p {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+  color: #ddd;
 }
 
 .phone {
@@ -361,7 +363,10 @@ body {
   padding: 12px 30px;
   text-transform: uppercase;
   font-weight: bold;
+  border-radius: 5px;
   transition: background 0.3s ease;
+  display: inline-block;
+  margin-top: 20px;
 }
 
 .contact-button:hover {
@@ -370,31 +375,47 @@ body {
 
 form {
   max-width: 500px;
-  margin: 3% auto;
+  margin: 30px auto;
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  color: #333;
 }
 
 .form-group {
   margin-bottom: 20px;
+  text-align: left;
 }
 
 label {
   display: block;
+  font-weight: bold;
+  color: #333;
   margin-bottom: 5px;
 }
 
-
-input,
+input[type="text"],
+input[type="email"],
+input[type="tel"],
 textarea {
   width: 100%;
   padding: 10px;
-  border: 2px solid #525252;
+  border: 2px solid #ddd;
   border-radius: 5px;
   font-size: 1rem;
+  background: #f9f9f9;
 }
-  
+
 input:focus,
 textarea:focus {
   outline: none;
+  border-color: #42b983;
+}
+
+textarea {
+  min-height: 100px;
+  resize: vertical;
 }
 
 /* Responsive Styles */
@@ -410,6 +431,18 @@ textarea:focus {
 
   .hero-content p {
     font-size: 1rem;
+  }
+
+  .contact {
+    padding: 40px 20px;
+  }
+
+  .contact h2 {
+    font-size: 2rem;
+  }
+
+  form {
+    padding: 15px;
   }
 }
 </style>
