@@ -303,19 +303,24 @@ body {
 
 /* Contact Info Section */
 .contact-info {
-  background: #42b983;
+  background-color: #f4f4f4;
   padding: 60px 0;
   text-align: center;
-  color: white;
+  backdrop-filter: blur(11.5rem);
 }
 
 .contact-info h2{
   font-size: 2.5rem;
 }
 
-.telegram-button {
-  background: white;
-  color: #42b983;
+.contact-info p{
+  font-size: 1.5rem;
+  margin: 5%;
+}
+
+.telegram-button {  
+  background: #42b983;
+  color: white;
   border-radius: 8px;
   padding: 12px 30px;
   text-transform: uppercase;
@@ -324,14 +329,21 @@ body {
 }
 
 .telegram-button:hover {
-  background: #f4f4f4;
+  background: #348f66;
 }
 
 /* Contact Section */
 .contact {
-  
-  padding: 60px 0;
-  background: #f9f9f9;
+  position: relative;
+  background-color: #35495e;
+  background-size: cover;
+  background-position: center;
+  color: white;
+  height: 80vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
 }
 
 .contact h2{
@@ -347,9 +359,9 @@ body {
   background: #42b983;
   color: white;
   padding: 12px 30px;
-  border-radius: 8px;
+  text-transform: uppercase;
   font-weight: bold;
-  margin-bottom: 20px;
+  transition: background 0.3s ease;
 }
 
 .contact-button:hover {
@@ -358,7 +370,7 @@ body {
 
 form {
   max-width: 500px;
-  margin: 0 auto;
+  margin: 3% auto;
 }
 
 .form-group {
@@ -370,18 +382,18 @@ label {
   margin-bottom: 5px;
 }
 
+
 input,
 textarea {
   width: 100%;
   padding: 10px;
-  border: 2px solid #ddd;
+  border: 2px solid #525252;
   border-radius: 5px;
   font-size: 1rem;
 }
-
+  
 input:focus,
 textarea:focus {
-  border-color: #42b983;
   outline: none;
 }
 

@@ -216,7 +216,7 @@ func createTourHandler(db *gorm.DB) http.HandlerFunc {
 		defer file.Close()
 
 		// Сохраняем изображение на диск
-		imagePath, err := saveImageTour(file, header, "/static/uploads")
+		imagePath, err := saveImageTour(file, header, "static/uploads")
 		if err != nil {
 			http.Error(w, "Failed to save image", http.StatusInternalServerError)
 			return
@@ -423,7 +423,11 @@ func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id s
 
 	// Обработка и добавление новых дней тура
 	days := r.FormValue("days")
-	if days != "" {
+
+	// Если дни не переданы, завершаем процесс обновления тура без модификации дней
+	if days == "" {
+		log.Println("No days data provided, skipping days update")
+	} else {
 		log.Printf("Received days data: %s", days)
 		var tourDays []Day
 		if err := json.Unmarshal([]byte(days), &tourDays); err != nil {
