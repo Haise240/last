@@ -48,21 +48,17 @@
     <input type="number" v-model="tourForm.duration" placeholder="Длительность (дни)" class="form-input" />
     <input type="number" v-model="tourForm.price" placeholder="Цена тура" step="0.01" required class="form-input" />
     
-    <!-- Отображение текущего изображения при редактировании тура -->
     <div v-if="tourForm.imageUrl">
       <h3>Текущее изображение:</h3>
       <img :src="tourForm.imageUrl" alt="Текущая фотография тура" style="max-width: 300px;" />
     </div>
     <input type="file" name="image" @change="uploadFile" />
 
-
-    <!-- Отображение и редактирование дней тура -->
     <div v-for="(day, index) in tourForm.days" :key="index" class="day-entry">
       <h3>День {{ day.dayNumber }}</h3>
       <textarea v-model="day.details" placeholder="Описание дня" class="form-input"></textarea>
       <button @click="removeDay(index)" type="button" class="btn btn-remove">Удалить день</button>
     </div>
-
 
     <button @click="addDay" type="button" class="btn btn-add-day">Добавить день</button>
 
@@ -70,6 +66,7 @@
     <button v-if="editingTour" @click="cancelEditTour" class="btn btn-cancel">Отменить</button>
   </form>
 </div>
+
 
 
     <!-- Список существующих туров -->

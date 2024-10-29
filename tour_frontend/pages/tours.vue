@@ -181,6 +181,10 @@ body {
 }
 
 /* Sorting Buttons */
+
+.filters{
+  padding: 20px;
+}
 .sorting-buttons {
   display: flex;
   flex-wrap: wrap;

@@ -382,6 +382,17 @@ func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id s
 		log.Println("No new image uploaded")
 	}
 
+	// Чтение и проверка данных о днях тура
+	daysData := r.FormValue("days")
+	var tourDays []Day
+	if daysData != "" {
+		if err := json.Unmarshal([]byte(daysData), &tourDays); err != nil {
+			log.Printf("Invalid days format: %v", err)
+			http.Error(w, "Invalid days format", http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Начало транзакции
 	tx := db.Begin()
 	if tx.Error != nil {
@@ -421,22 +432,8 @@ func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id s
 	}
 	log.Println("Tour updated successfully")
 
-	// Обработка и добавление новых дней тура
-	days := r.FormValue("days")
-
-	// Если дни не переданы, завершаем процесс обновления тура без модификации дней
-	if days == "" {
-		log.Println("No days data provided, skipping days update")
-	} else {
-		log.Printf("Received days data: %s", days)
-		var tourDays []Day
-		if err := json.Unmarshal([]byte(days), &tourDays); err != nil {
-			log.Printf("Invalid days format: %v", err)
-			tx.Rollback()
-			http.Error(w, "Invalid days format", http.StatusBadRequest)
-			return
-		}
-
+	// Обработка и обновление дней тура
+	if daysData != "" {
 		// Получаем текущие дни тура из таблицы "tour_days"
 		var existingDays []Day
 		if err := tx.Table("tour_days").Where("tour_id = ?", uintTourID).Find(&existingDays).Error; err != nil {
@@ -446,30 +443,17 @@ func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id s
 			return
 		}
 
-		// Удаляем только те дни, которых нет в новом списке
+		// Сбор существующих дней в карту по ID
+		existingIDs := make(map[uint]Day)
 		for _, existingDay := range existingDays {
-			dayExists := false
-			for _, newDay := range tourDays {
-				if existingDay.ID == newDay.ID {
-					dayExists = true
-					break
-				}
-			}
-			if !dayExists {
-				if err := tx.Table("tour_days").Delete(&existingDay).Error; err != nil {
-					log.Printf("Failed to delete day: %v", err)
-					tx.Rollback()
-					http.Error(w, "Failed to update tour days", http.StatusInternalServerError)
-					return
-				}
-			}
+			existingIDs[uint(existingDay.ID)] = existingDay
 		}
 
-		// Добавляем или обновляем дни
+		// Обновляем или добавляем новые дни
 		for _, newDay := range tourDays {
 			newDay.TourID = int(uintTourID)
 			if newDay.ID == 0 {
-				// Добавляем новый день
+				// Новый день
 				if err := tx.Table("tour_days").Create(&newDay).Error; err != nil {
 					log.Printf("Failed to create day: %v", err)
 					tx.Rollback()
@@ -477,15 +461,29 @@ func updateTourHandler(db *gorm.DB, w http.ResponseWriter, r *http.Request, id s
 					return
 				}
 			} else {
-				// Обновляем существующий день
-				if err := tx.Table("tour_days").Save(&newDay).Error; err != nil {
-					log.Printf("Failed to update day: %v", err)
-					tx.Rollback()
-					http.Error(w, "Failed to update tour day", http.StatusInternalServerError)
-					return
+				// Обновление существующего дня
+				if _, found := existingIDs[uint(newDay.ID)]; found {
+					if err := tx.Table("tour_days").Save(&newDay).Error; err != nil {
+						log.Printf("Failed to update day: %v", err)
+						tx.Rollback()
+						http.Error(w, "Failed to update tour day", http.StatusInternalServerError)
+						return
+					}
+					// Удаляем обновлённый день из карты, чтобы в конце удалить только лишние
+					delete(existingIDs, uint(newDay.ID))
 				}
 			}
 			log.Printf("Day processed: %+v", newDay)
+		}
+
+		// Удаляем дни, которые отсутствуют в новом списке
+		for _, obsoleteDay := range existingIDs {
+			if err := tx.Table("tour_days").Delete(&obsoleteDay).Error; err != nil {
+				log.Printf("Failed to delete day: %v", err)
+				tx.Rollback()
+				http.Error(w, "Failed to update tour days", http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 

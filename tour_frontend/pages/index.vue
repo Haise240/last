@@ -381,6 +381,7 @@ form {
   border-radius: 8px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   color: #333;
+  border-bottom: #f4f4f4;
 }
 
 .form-group {

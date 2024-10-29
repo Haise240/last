@@ -46,19 +46,19 @@
         <h2>Свяжитесь с нами</h2>
         <form @submit.prevent="submitForm">
           <div class="form-group">
-            <label for="name">Имя</label>
+            <label for="name" class="form-head">Имя</label>
             <input type="text" id="name" v-model="formData.name" required />
           </div>
           <div class="form-group">
-            <label for="email">Email</label>
+            <label for="email" class="form-head">Email</label>
             <input type="email" id="email" v-model="formData.email" required />
           </div>
           <div class="form-group">
-            <label for="phone">Телефон</label>
+            <label for="phone" class="form-head">Телефон</label>
             <input type="tel" id="phone" v-model="formData.phone" required />
           </div>
           <div class="form-group">
-            <label for="message">Сообщение</label>
+            <label for="message" class="form-head">Сообщение</label>
             <textarea id="message" v-model="formData.message" required></textarea>
           </div>
           <button type="submit" class="btn contact-button">Отправить</button>
@@ -126,148 +126,167 @@ export default {
 </script>
 
 <style scoped>
-/* Header Styling */
+/* Contacts Page Styles */
+.contacts-page {
+  background-color: #f9f9f9;
+}
+
+/* Header Section */
 .page-header {
-  background: linear-gradient(135deg, #355e5e, #35495e);
+  background-color: #35495e;
   color: white;
   padding: 60px 0;
   text-align: center;
-  font-family: 'Arial', sans-serif;
 }
 
 .page-header h1 {
-  font-size: 2.5em;
-  margin-bottom: 10px;
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+  font-weight: 700;
 }
 
 .page-header p {
-  font-size: 1.2em;
+  font-size: 1.2rem;
+  color: #ddd;
 }
 
 /* Contact Information Section */
 .contact-info {
-  padding: 50px 0;
+  padding: 60px 0;
+  background-color: #f4f4f4;
+  text-align: center;
 }
 
-.info-block {
+.contact-info h2 {
+  font-size: 2.5rem;
   margin-bottom: 30px;
 }
 
-.info-block h2 {
-  font-size: 1.8em;
-  margin-bottom: 15px;
+.form-head{
+  color:#333;
+}
+.info-block {
+  margin-bottom: 40px;
 }
 
 .info-block ul {
   list-style: none;
   padding: 0;
+  font-size: 1.2rem;
+  color: #333;
 }
 
 .info-block ul li {
-  font-size: 1em;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
+  margin: 10px 0;
 }
 
-.info-block ul li i {
+.info-block i {
   margin-right: 10px;
+  color: #42b983;
 }
 
-/* Form Section */
+/* Contact Form Section */
 .contact-form-section {
-  padding: 50px 0;
+  background-color: #35495e;
+  padding: 60px 0;
+  color: #f4f4f4;
 }
 
 .contact-form-section h2 {
-  font-size: 1.8em;
+  font-size: 2.5rem;
   margin-bottom: 20px;
+  text-align: center;
 }
 
-/* Form Styles */
 form {
-  max-width: 600px;
+  max-width: 500px;
   margin: 0 auto;
+  background: #f4f4f4;
   padding: 20px;
-  background: #35495e;
   border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .form-group {
   margin-bottom: 20px;
+  text-align: left;
 }
 
 label {
   display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #fff;
+  font-weight: bold;
+  margin-bottom: 5px;
 }
 
-input, textarea {
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+textarea {
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
+  padding: 10px;
+  border: 2px solid #ddd;
   border-radius: 5px;
-  font-size: 16px;
+  font-size: 1rem;
+  background: #f9f9f9;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: #42b983;
 }
 
 textarea {
-  height: 150px;
+  min-height: 100px;
+  resize: vertical;
 }
 
-.btn {
+.contact-button {
   background: #42b983;
   color: white;
-  padding: 10px 20px;
-  border: none;
+  padding: 12px 30px;
+  text-transform: uppercase;
+  font-weight: bold;
   border-radius: 5px;
-  cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.3s ease;
+  display: inline-block;
+  margin-top: 20px;
 }
 
-.btn:hover {
-  background: #369972;
+.contact-button:hover {
+  background: #348f66;
 }
 
 /* Map Section */
 .map-section {
-  padding: 50px 0;
-  background: #f4f4f4;
+  padding: 60px 0;
+  text-align: center;
 }
 
 .map-section h2 {
-  font-size: 1.8em;
-  margin-bottom: 20px;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
 }
 
-.map {
-  width: 100%;
-  height: 450px;
-  border-radius: 10px;
-}
-
-/* Responsive Styling */
+/* Responsive Styles */
 @media (max-width: 768px) {
-  .page-header h1 {
-    font-size: 2em;
+  .page-header {
+    padding: 40px 20px;
   }
 
-  .page-header p {
-    font-size: 1em;
-  }
-
-  .info-block ul li {
-    font-size: 0.9em;
-  }
-
-  .contact-form-section h2 {
-    font-size: 1.5em;
-  }
-
+  .contact-info h2,
+  .contact-form-section h2,
   .map-section h2 {
-    font-size: 1.5em;
+    font-size: 2rem;
+  }
+
+  form {
+    padding: 15px;
+  }
+
+  .info-block ul {
+    font-size: 1rem;
   }
 }
+
 </style>
