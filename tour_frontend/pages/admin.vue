@@ -39,33 +39,34 @@
 
 
 
-<!-- Форма для добавления или редактирования тура -->
-<div>
-  <h2>{{ editingTour ? 'Редактировать тур' : 'Добавить тур' }}</h2>
-  <form @submit.prevent="saveTour" class="admin-form" enctype="multipart/form-data">
-    <input v-model="tourForm.name" placeholder="Название тура" required class="form-input" />
-    <textarea v-model="tourForm.description" placeholder="Описание тура" class="form-input"></textarea>
-    <input type="number" v-model="tourForm.duration" placeholder="Длительность (дни)" class="form-input" />
-    <input type="number" v-model="tourForm.price" placeholder="Цена тура" step="0.01" required class="form-input" />
-    
-    <div v-if="tourForm.imageUrl">
-      <h3>Текущее изображение:</h3>
-      <img :src="tourForm.imageUrl" alt="Текущая фотография тура" style="max-width: 300px;" />
+    <!-- Форма для добавления или редактирования тура -->
+    <div>
+      <h2>{{ editingTour ? 'Редактировать тур' : 'Добавить тур' }}</h2>
+      <form @submit.prevent="saveTour" class="admin-form" enctype="multipart/form-data">
+        <input v-model="tourForm.name" placeholder="Название тура" required class="form-input" />
+        <textarea v-model="tourForm.description" placeholder="Описание тура" class="form-input"></textarea>
+        <input type="number" v-model="tourForm.duration" placeholder="Длительность (дни)" class="form-input" />
+        <input type="number" v-model="tourForm.price" placeholder="Цена тура" step="0.01" required class="form-input" />
+        
+        <div v-if="tourForm.imageUrl">
+          <h3>Текущее изображение:</h3>
+          <img :src="tourForm.imageUrl" alt="Текущая фотография тура" style="max-width: 300px;" />
+        </div>
+        <input type="file" name="image" @change="uploadFile" />
+
+        <div v-for="(day, index) in tourForm.days" :key="day.id" class="day-entry">
+          <h3>День {{ day.dayNumber }}</h3>
+          <textarea v-model="day.details" placeholder="Описание дня" class="form-input"></textarea>
+          <button @click="removeDay(index)" type="button" class="btn btn-remove">Удалить день</button>
+        </div>
+
+
+        <button @click="addDay" type="button" class="btn btn-add-day">Добавить день</button>
+
+        <button type="submit" class="btn">{{ editingTour ? 'Обновить' : 'Добавить' }} тур</button>
+        <button v-if="editingTour" @click="cancelEditTour" class="btn btn-cancel">Отменить</button>
+      </form>
     </div>
-    <input type="file" name="image" @change="uploadFile" />
-
-    <div v-for="(day, index) in tourForm.days" :key="index" class="day-entry">
-      <h3>День {{ day.dayNumber }}</h3>
-      <textarea v-model="day.details" placeholder="Описание дня" class="form-input"></textarea>
-      <button @click="removeDay(index)" type="button" class="btn btn-remove">Удалить день</button>
-    </div>
-
-    <button @click="addDay" type="button" class="btn btn-add-day">Добавить день</button>
-
-    <button type="submit" class="btn">{{ editingTour ? 'Обновить' : 'Добавить' }} тур</button>
-    <button v-if="editingTour" @click="cancelEditTour" class="btn btn-cancel">Отменить</button>
-  </form>
-</div>
 
 
 
@@ -80,6 +81,7 @@
           <p><strong>Цена:</strong> {{ tour.price }} ₽</p>
           <button @click="editTour(tour)" class="btn btn-edit">Редактировать</button>
           <button @click="deleteTour(tour.id)" class="btn btn-delete">Удалить</button>
+          <button @click="details(tour.id)" class="btn btn-details">Подробнее</button>
         </li>
       </ul>
     </div>
@@ -111,6 +113,11 @@ const tourForm = ref({
   days: [],
   imageUrl: null
 });
+
+
+function details() {
+  
+}
 
 // Метод для переключения видимости галереи
 function toggleGallery() {
@@ -252,18 +259,20 @@ function resetTourForm() {
 function editTour(tour) {
   editingTour.value = true;
 
-  // Проверяем, есть ли поле days, если нет, инициализируем пустым массивом
+  // Обновляем данные формы, включая дни тура
   tourForm.value = { 
     ...tour, 
-    days: (tour.days || []).map((day, index) => ({
-      dayNumber: index + 1, // Используем индекс для нумерации
-      details: day.details || '' 
+    days: tour.days.map((day) => ({
+      id: day.id,
+      dayNumber: day.dayNumber,
+      details: day.details
     })),
-    imageUrl: tour.imageUrl || ''  // Устанавливаем текущее изображение или пустое значение
+    imageUrl: tour.imageUrl || ''  // Подгружаем текущее изображение
   };
 
   setCurrentTour(tour.id);
 }
+
 
 
 
@@ -330,25 +339,31 @@ async function saveTour() {
     formData.append('duration', tourForm.value.duration);
     formData.append('price', tourForm.value.price);
 
-    // Сериализуем и добавляем дни тура
-    formData.append('days', JSON.stringify(tourForm.value.days));
+    // Проверка и форматирование дней тура
+    const daysData = tourForm.value.days.map(day => ({
+      id: day.id || null,
+      dayNumber: day.dayNumber,
+      details: day.details
+    }));
 
-    // Добавляем изображение только если оно было загружено
+    formData.append('days', JSON.stringify(daysData));
+
+    // Добавляем изображение, если оно было загружено
     if (tourForm.value.image) {
       formData.append('image', tourForm.value.image);
     }
 
-    // Если редактируем тур
+    // Определяем тип запроса (PUT или POST) на основе режима редактирования
+    let response;
     if (editingTour.value && tourForm.value.id) {
-      const response = await axios.put(`http://localhost:8080/api/tours/${tourForm.value.id}`, formData, {
+      response = await axios.put(`http://localhost:8080/api/tours/${tourForm.value.id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
       console.log("PUT response:", response);
     } else {
-      // Создаем новый тур через POST запрос
-      const response = await axios.post(`http://localhost:8080/api/tours`, formData, {
+      response = await axios.post(`http://localhost:8080/api/tours`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -370,6 +385,7 @@ async function saveTour() {
     }
   }
 }
+
 
 
 
